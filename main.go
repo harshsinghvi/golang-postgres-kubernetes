@@ -104,12 +104,19 @@ func deleteTodos(c *gin.Context){
 	c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "no ID"})
 }
 
+func healthAndReadinessHandler(c *gin.Context){
+	c.IndentedJSON(http.StatusOK, gin.H {"message": "OK"})
+}
+
 func main() {
     router := gin.Default()
     router.GET("/todos", getTodos)
 	router.POST("/todos", postTodos)
 	router.PUT("/todos/:id", updateTodos)
 	router.DELETE("/todos/:id", deleteTodos)
+	
+    router.GET("/health", healthAndReadinessHandler)
+    router.GET("/readiness", healthAndReadinessHandler)
 
-    router.Run("localhost:8080")
+	router.Run(":8080")
 }
