@@ -59,11 +59,12 @@ metadata:
   annotations:
     alb.ingress.kubernetes.io/scheme: internet-facing
     alb.ingress.kubernetes.io/target-type: ip
+    
     # alb.ingress.kubernetes.io/group.name: kube-alb-group  #Use this to share ALB among multiple ingresses. #CostEffective
     # alb.ingress.kubernetes.io/load-balancer-name: kube-alb  # give ALB a meaningfull name otherwise a random name is assigned by AWS.
     # alb.ingress.kubernetes.io/certificate-arn: "arn:aws:acm:eu-west-1:XXXX:certificate/YYYY" # Get it by $ aws acm list-certificates
-    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS":443}]'
-    alb.ingress.kubernetes.io/ssl-redirect: "443"
+    # alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS":443}]'
+    # alb.ingress.kubernetes.io/ssl-redirect: "443"
 spec:
   ingressClassName: alb
   rules:
