@@ -4,7 +4,7 @@ kind: Deployment                 # Type of Kubernetes resource
 metadata:
   name:  go-todo-api           # Name of the Kubernetes resource
 spec:
-  replicas: 3                    # Number of pods to run at any given time
+  replicas: 2                    # Number of pods to run at any given time
   selector:
     matchLabels:
       app:  go-todo-api        # This deployment applies to any Pods matching the specified label
@@ -36,18 +36,55 @@ spec:
             scheme: HTTP
           initialDelaySeconds: 5
           timeoutSeconds: 1
-# Not for AWS Fargate
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: go-todo-api-loadbalancer
+  name: golang-todo-api-service
 spec:
+  ports:
+    - port: 8080
+      targetPort: 8080
+      # protocol: TCP
   type: LoadBalancer
   selector:
     app: go-todo-api
-  ports:
-    - protocol: TCP
-      port: 80
-      targetPort: 8080
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: golang-todo-api-ingress
+  annotations:
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    # alb.ingress.kubernetes.io/group.name: kube-alb-group  #Use this to share ALB among multiple ingresses. #CostEffective
+    # alb.ingress.kubernetes.io/load-balancer-name: kube-alb  # give ALB a meaningfull name otherwise a random name is assigned by AWS.
+    # alb.ingress.kubernetes.io/certificate-arn: "arn:aws:acm:eu-west-1:XXXX:certificate/YYYY" # Get it by $ aws acm list-certificates 
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS":443}]'
+    alb.ingress.kubernetes.io/ssl-redirect: '443'
+spec:
+  ingressClassName: alb
+  rules:
+    - http:
+        paths:
+        - path: /
+          pathType: Prefix
+          backend:
+            service:
+              name: golang-todo-api-service
+              port:
+                number: 8080
 
+---
+apiVersion: autoscaling/v1
+kind: HorizontalPodAutoscaler
+metadata:
+  name: php-apache
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: go-todo-api
+  minReplicas: 1
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 60

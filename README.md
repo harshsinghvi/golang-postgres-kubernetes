@@ -19,6 +19,9 @@
 - https://dev.to/asizikov/using-github-container-registry-with-kubernetes-38fb ghcr.io kubernetes
 - https://aws.amazon.com/blogs/containers/using-alb-ingress-controller-with-amazon-eks-on-fargate/ fargarte exose services
 
+- https://docs.aws.amazon.com/eks/latest/userguide/aws-load-balancer-controller.html alb imp
+- https://docs.aws.amazon.com/eks/latest/userguide/alb-ingress.html eks ingress imp
+
 ## TODOS
 
 - Golang API
