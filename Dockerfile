@@ -2,7 +2,6 @@
 # STEP 1 build executable binary
 ############################
 FROM golang:alpine AS builder
-LABEL org.opencontainers.image.source="https://github.com/harshsinghvi/golang-postgres-kubernetes"
 # Install git.
 # Git is required for fetching the dependencies.
 RUN apk update && apk add --no-cache 'git=~2'
