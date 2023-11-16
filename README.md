@@ -9,21 +9,21 @@
 
 ## resources
 
-- Linkedin Learning (kubernetes, golang courses)
-- udemy hnsr course db
-- https://go.dev/doc/tutorial/web-service-gin
-- https://dev.to/ramu_mangalarapu/building-rest-apis-in-golang-go-gin-with-persistence-database-postgres-4616
-- https://www.coding-bootcamps.com/blog/build-containerized-applications-with-golang-on-kubernetes.html
-- https://docs.aws.amazon.com/eks/latest/userguide/horizontal-pod-autoscaler.html
-- https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale-walkthrough/
-- https://dev.to/asizikov/using-github-container-registry-with-kubernetes-38fb ghcr.io kubernetes
-- https://aws.amazon.com/blogs/containers/using-alb-ingress-controller-with-amazon-eks-on-fargate/ fargarte exose services
+- <https://go.dev/doc/tutorial/web-service-gin>
+- <https://dev.to/ramu_mangalarapu/building-rest-apis-in-golang-go-gin-with-persistence-database-postgres-4616>
+- <https://www.coding-bootcamps.com/blog/build-containerized-applications-with-golang-on-kubernetes.html>
+- <https://docs.aws.amazon.com/eks/latest/userguide/horizontal-pod-autoscaler.html>
+- <https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale-walkthrough/>
 
-- https://docs.aws.amazon.com/eks/latest/userguide/aws-load-balancer-controller.html alb imp
-- https://docs.aws.amazon.com/eks/latest/userguide/alb-ingress.html eks ingress imp
-- https://artifacthub.io/packages/helm/metrics-server/metrics-server install Matrics server
-- https://docs.aws.amazon.com/eks/latest/userguide/metrics-server.html matrics server 
-- https://levelup.gitconnected.com/how-to-deploy-a-multi-container-two-tier-go-application-in-eks-fargate-6266494f5bcf go and postgres eks
+- <https://dev.to/asizikov/using-github-container-registry-with-kubernetes-38fb> ghcr.io kubernetes
+
+- <https://aws.amazon.com/blogs/containers/using-alb-ingress-controller-with-amazon-eks-on-fargate/> fargarte exose services
+- <https://docs.aws.amazon.com/eks/latest/userguide/aws-load-balancer-controller.html> alb imp
+- <https://docs.aws.amazon.com/eks/latest/userguide/alb-ingress.html> eks ingress imp
+
+- <https://artifacthub.io/packages/helm/metrics-server/metrics-server> install Matrics server
+- <https://docs.aws.amazon.com/eks/latest/userguide/metrics-server.html> matrics server
+- <https://levelup.gitconnected.com/how-to-deploy-a-multi-container-two-tier-go-application-in-eks-fargate-6266494f5bcf> go and postgres eks
 
 ## TODOS
 
@@ -38,6 +38,7 @@
 - autoscale postgress deployment
 
 ## AWS Resources created (tags: pingsafe-test)
+
 - EKS IAM Role
 - EKS Cluster
 - ECS Cluster
@@ -45,8 +46,8 @@
 
 docker login -u AWS -p $(aws ecr get-login-password --region ap-south-1) 194505915562.dkr.ecr.ap-south-1.amazonaws.com
 
+## Build docker image for eks faragete
 
-## Build docker image for eks faragete 
 // login ghcr docker
 export CR_PAT=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
 echo $CR_PAT | docker login ghcr.io -u harshsinghvi --password-stdin
@@ -55,8 +56,18 @@ docker buildx build --platform=linux/amd64 -t ghcr.io/harshsinghvi/golang-postgr
 
 docker push ghcr.io/harshsinghvi/golang-postgres-kubernetes:latest
 
-```
+## K8S procedure
 
+1. eksctl faragete cluster `eksctl create cluster --name cluster --region ap-south-1 --fargate`
+1. cluster ALB ingress <https://docs.aws.amazon.com/eks/latest/userguide/aws-load-balancer-controller.html>
+1. setup matrics server (for HPA) from YML
+1. sertup efs (elastic file storage) <https://levelup.gitconnected.com/how-to-deploy-a-multi-container-two-tier-go-application-in-eks-fargate-6266494f5bcf>
+1. ghcr secrets for image <https://dev.to/asizikov/using-github-container-registry-with-kubernetes-38fb>
+1. deploy services (yml files) yml files includes HPA
+
+## AUTOSCALE LOGS
+
+```text
 go-todo-api-hpa   Deployment/go-todo-api   15%/30%   1         10        2          19m
 go-todo-api-hpa   Deployment/go-todo-api   14%/30%   1         10        1          19m
 go-todo-api-hpa   Deployment/go-todo-api   15%/30%   1         10        1          19m
@@ -176,33 +187,3 @@ go-todo-api-hpa   Deployment/go-todo-api   20%/30%   1         10        3      
 go-todo-api-hpa   Deployment/go-todo-api   8%/30%    1         10        3          53m
 go-todo-api-hpa   Deployment/go-todo-api   0%/30%    1         10        3          53m
 ```
-
-aws efs create-mount-target \
-    --file-system-id $file_system_id \
-    --subnet-id subnet-0f8e0a7152ce63763 \
-    --security-groups $security_group_id
-
-aws efs create-mount-target \
-    --file-system-id $file_system_id \
-    --subnet-id subnet-0e2824fc49bdcd202 \
-    --security-groups $security_group_id
-
-aws efs create-mount-target \
-    --file-system-id $file_system_id \
-    --subnet-id subnet-028474cfc7ca5c2c5 \
-    --security-groups $security_group_id
-
-aws efs create-mount-target \
-    --file-system-id $file_system_id \
-    --subnet-id subnet-060db0728f89d0203 \
-    --security-groups $security_group_id
-
-aws efs create-mount-target \
-    --file-system-id $file_system_id \
-    --subnet-id subnet-00782a5c917b7ae74 \
-    --security-groups $security_group_id
-
-aws efs create-mount-target \
-    --file-system-id $file_system_id \
-    --subnet-id subnet-0a7fb187cb42744b1 \
-    --security-groups $security_group_id
