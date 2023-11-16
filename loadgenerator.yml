@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: loadgenerator
+  labels:
+    app: loadgenerator
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: loadgenerator
+  template:
+    metadata:
+      name: loadgenerator
+      labels:
+        app: loadgenerator
+    spec:
+      containers:
+        - name: loadgenerator
+          imagePullPolicy: IfNotPresent # Always
+          image: busybox
+          command:
+          - /bin/sh
+          - -c
+          - "while true; do wget -q -O- http://golang-todo-api-service:8080/todos; done"

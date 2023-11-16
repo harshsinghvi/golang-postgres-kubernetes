@@ -4,7 +4,7 @@ kind: Deployment # Type of Kubernetes resource
 metadata:
   name: go-todo-api # Name of the Kubernetes resource
 spec:
-  replicas: 2 # Number of pods to run at any given time
+  replicas: 3 # Number of pods to run at any given time
   selector:
     matchLabels:
       app: go-todo-api # This deployment applies to any Pods matching the specified label
@@ -18,9 +18,14 @@ spec:
       containers:
         - name: go-todo-api
           image: ghcr.io/harshsinghvi/golang-postgres-kubernetes:latest
-          imagePullPolicy: Always # IfNotPresent
+          imagePullPolicy: IfNotPresent # Always
           ports:
             - containerPort: 8080 # Should match the port number that the Go application listens on
+          resources:
+            limits:
+              cpu: '500m'
+            requests:
+              cpu: '200m'
           livenessProbe: # To check the health of the Pod
             httpGet:
               path: /health
@@ -93,12 +98,13 @@ data:
 apiVersion: autoscaling/v1
 kind: HorizontalPodAutoscaler
 metadata:
-  name: php-apache
+  name: go-todo-api-hpa
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
     name: go-todo-api
-  minReplicas: 1
+  minReplicas: 2
   maxReplicas: 10
-  targetCPUUtilizationPercentage: 60
+  targetCPUUtilizationPercentage: 30
+  
