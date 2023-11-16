@@ -36,7 +36,7 @@ func Connect() *pg.DB {
 	opts := &pg.Options{
 		User:     DB_USER,
 		Password: DB_PASSWORD,
-		Addr:     DB_HOST+":"+DB_PORT,
+		Addr:     DB_HOST + ":" + DB_PORT,
 		Database: DB_NAME,
 	}
 	connection = pg.Connect(opts)
@@ -45,6 +45,7 @@ func Connect() *pg.DB {
 		os.Exit(100)
 	}
 	log.Printf("Connected to db")
+	database_ready = true
 	return connection
 }
 

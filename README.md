@@ -25,6 +25,8 @@
 - <https://docs.aws.amazon.com/eks/latest/userguide/metrics-server.html> matrics server
 - <https://levelup.gitconnected.com/how-to-deploy-a-multi-container-two-tier-go-application-in-eks-fargate-6266494f5bcf> go and postgres eks
 
+- golang postgres api <https://medium.com/@cavdy/creating-restful-api-using-golang-and-postgres-part-2-542aac86e2bd> <https://medium.com/@cavdy/creating-restful-api-using-golang-and-postgres-part-1-58fe83c6f1ee>
+
 ## TODOS
 
 - Golang API
@@ -37,28 +39,31 @@
 - deploy postgress to Kubernetes
 - autoscale postgress deployment
 
-## Build docker image for eks faragete
-
-// login ghcr docker
-export CR_PAT=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
-echo $CR_PAT | docker login ghcr.io -u harshsinghvi --password-stdin
-
-docker buildx build --platform=linux/amd64 -t ghcr.io/harshsinghvi/golang-postgres-kubernetes:latest .
-
-docker push ghcr.io/harshsinghvi/golang-postgres-kubernetes:latest
-
 ## K8S procedure
 
 1. eksctl faragete cluster `eksctl create cluster --name cluster --region ap-south-1 --fargate`
 1. cluster ALB ingress <https://docs.aws.amazon.com/eks/latest/userguide/aws-load-balancer-controller.html>
 1. setup matrics server (for HPA) from YML
-1. sertup efs (elastic file storage) <https://levelup.gitconnected.com/how-to-deploy-a-multi-container-two-tier-go-application-in-eks-fargate-6266494f5bcf>
-1. ghcr secrets for image <https://dev.to/asizikov/using-github-container-registry-with-kubernetes-38fb>
+1. sertup efs (elastic file storage) <https://github.com/kubernetes-sigs/aws-efs-csi-driver/blob/master/docs/efs-create-filesystem.md> get file_system_id and replace volumeHandle: fs-1234567899 in database.yml
+1. ghcr secrets for image <https://dev.to/asizikov/using-github-container-registry-with-kubernetes-38fb> replace required fields in secrets.yml
+
 1. deploy services (yml files) yml files includes HPA
+
+## commands
+
+```bash
+
+kubectl rollout restart deployment/name # to update image
+kubectl get ingress # ingress exposed url
+
+aws eks update-kubeconfig --region ap-south-1 --name cluster
+kubectl exec --stdin --tty pod/postgres-0 -- /bin/bash
+```
 
 ## AUTOSCALE LOGS HPA
 
 `kubectl get hpa php-apache --watch`
+
 ```text
 go-todo-api-hpa   Deployment/go-todo-api   15%/30%   1         10        2          19m
 go-todo-api-hpa   Deployment/go-todo-api   14%/30%   1         10        1          19m
@@ -177,4 +182,141 @@ go-todo-api-hpa   Deployment/go-todo-api   23%/30%   1         10        3      
 go-todo-api-hpa   Deployment/go-todo-api   20%/30%   1         10        3          52m
 go-todo-api-hpa   Deployment/go-todo-api   8%/30%    1         10        3          53m
 go-todo-api-hpa   Deployment/go-todo-api   0%/30%    1         10        3          53m
+```
+
+## GHCR image build and push
+
+`https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registry`
+
+```bash
+docker buildx build --platform=linux/amd64 -t golang-postgres-kubernetes .
+
+docker tag golang-postgres-kubernetes ghcr.io/harshsinghvi/golang-postgres-kubernetes:latest
+
+docker push ghcr.io/harshsinghvi/golang-postgres-kubernetes:latest
+```
+
+## ELB and ingress SETUP
+
+```bash
+ACCOUNT_ID= # aws sts get-caller-identity
+AWS_EKS_CLUSTER_NAME=cluster
+AWS_EKS_CLUSTER_REGION=ap-south-1
+
+AWS_EKS_CLUSTER_VPC_ID=$(aws eks describe-cluster \
+    --name $AWS_EKS_CLUSTER_NAME \
+    --query "cluster.resourcesVpcConfig.vpcId" \
+    --output text)
+
+# AWS_EKS_CLUSTER_VPC_ID= # console>cloudformations
+
+curl -O https://raw.githubusercontent.com/kubernetes-sigs/aws-load-balancer-controller/v2.5.4/docs/install/iam_policy.json
+
+aws iam create-policy \
+    --policy-name AWSLoadBalancerControllerIAMPolicy \
+    --policy-document file://iam_policy.json
+
+eksctl utils associate-iam-oidc-provider --region=ap-south-1 --cluster=cluster --approve
+
+eksctl create iamserviceaccount \
+  --cluster=cluster \
+  --namespace=kube-system \
+  --name=aws-load-balancer-controller \
+  --role-name AmazonEKSLoadBalancerControllerRole \
+  --attach-policy-arn=arn:aws:iam::194505915562:policy/AWSLoadBalancerControllerIAMPolicy \
+  --approve
+
+helm repo add eks https://aws.github.io/eks-charts
+
+aws sts get-caller-identity
+
+helm install aws-load-balancer-controller eks/aws-load-balancer-controller \
+  -n kube-system \
+  --set clusterName=cluster \
+  --set serviceAccount.create=false \
+  --set serviceAccount.name=aws-load-balancer-controller \
+  --set region=ap-south-1 \
+  --set vpcId=vpc-07ae5f71518dd2545
+  
+kubectl get deployment -n kube-system aws-load-balancer-controller 
+
+                    # during upgrade 
+                    kubectl apply -k "github.com/aws/eks-charts/stable/aws-load-balancer-controller/crds?ref=master"
+
+                    helm upgrade aws-load-balancer-controller eks/aws-load-balancer-controller \
+                    -n kube-system \
+                    --set clusterName=cluster \
+                    --set serviceAccount.create=false \
+                    --set serviceAccount.name=aws-load-balancer-controller \
+                    --set region=ap-south-1 \
+                    --set vpcId=vpc-07ae5f71518dd2545
+```
+
+## EFS Setup
+
+```bash
+AWS_EKS_CLUSTER_NAME=cluster
+AWS_EKS_CLUSTER_REGION=ap-south-1
+
+vpc_id=$(aws eks describe-cluster \
+    --name $AWS_EKS_CLUSTER_NAME \
+    --query "cluster.resourcesVpcConfig.vpcId" \
+    --output text)
+
+cidr_range=$(aws ec2 describe-vpcs \
+    --vpc-ids $vpc_id \
+    --query "Vpcs[].CidrBlock" \
+    --output text \
+    --region $AWS_EKS_CLUSTER_REGION)
+
+
+security_group_id=$(aws ec2 create-security-group \
+    --group-name MyEfsSecurityGroup \
+    --description "My EFS security group" \
+    --vpc-id $vpc_id \
+    --output text)
+
+aws ec2 authorize-security-group-ingress \
+    --group-id $security_group_id \
+    --protocol tcp \
+    --port 2049 \
+    --cidr $cidr_range
+
+file_system_id=$(aws efs create-file-system \
+    --region ap-south-1 \
+    --performance-mode generalPurpose \
+    --query 'FileSystemId' \
+    --output text)
+
+
+aws ec2 describe-subnets \
+    --filters "Name=vpc-id,Values=$vpc_id" \
+    --query 'Subnets[*].{SubnetId: SubnetId,AvailabilityZone: AvailabilityZone,CidrBlock: CidrBlock}' \
+    --output table
+
+# run for each subnet
+aws efs create-mount-target \
+    --file-system-id $file_system_id \
+    --subnet-id subnet-09555c7ce2147f642  \
+    --security-groups $security_group_id
+aws efs create-mount-target \
+    --file-system-id $file_system_id \
+    --subnet-id subnet-019b6e706b2823a7b  \
+    --security-groups $security_group_id
+aws efs create-mount-target \
+    --file-system-id $file_system_id \
+    --subnet-id subnet-0324d7a94eb3afd09  \
+    --security-groups $security_group_id
+aws efs create-mount-target \
+    --file-system-id $file_system_id \
+    --subnet-id subnet-04d07f3812cf78123  \
+    --security-groups $security_group_id
+aws efs create-mount-target \
+    --file-system-id $file_system_id \
+    --subnet-id subnet-0ee5c658df8ef377c  \
+    --security-groups $security_group_id
+aws efs create-mount-target \
+    --file-system-id $file_system_id \
+    --subnet-id subnet-0360ff2918bf5fceb  \
+    --security-groups $security_group_id
 ```

@@ -13,7 +13,7 @@ spec:
   storageClassName: efs-sc
   csi:
     driver: efs.csi.aws.com
-    volumeHandle: fs-07cbaab02f39869e2
+    volumeHandle: fs-0b9f5c3cf12064d83
 
 ---
 apiVersion: v1
@@ -36,17 +36,6 @@ metadata:
 provisioner: efs.csi.aws.com
 
 ---
-apiVersion: v1
-kind: Secret
-metadata:
-  name: postgres-secret
-type: Opaque
-stringData:
-  POSTGRES_USER: postgres
-  POSTGRES_PASSWORD: postgres
-  POSTGRES_DB: postgres
-
----
 apiVersion: apps/v1
 kind: StatefulSet                                # Type of the kubernetes resource
 metadata:
@@ -60,7 +49,7 @@ spec:
       app: postgres
       tier: postgres
   replicas: 1
-  template:                                       # Template for the Pods in this statefulset
+  template:                                    # Template for the Pods in this statefulset
     metadata:
       labels:                                     # Labels to be applied to the Pods in this statefulset
         app: postgres
@@ -76,6 +65,11 @@ spec:
           ports:
             - containerPort: 5432                   # The port that the container exposes 
               name: postgres
+          resources:
+            limits:
+              cpu: "500m"
+            requests:
+              cpu: "200m"
           volumeMounts:
             - mountPath: /var/lib/postgresql/data
               name: postgres-persistent-storage     # This name should match the name specified in `volumes.name`
@@ -99,3 +93,17 @@ spec:
   selector:                                         # Selects any Pod with labels `app=fullstack-postgres,tier=postgres`
     app: postgres
     tier: postgres
+
+---
+apiVersion: autoscaling/v1
+kind: HorizontalPodAutoscaler
+metadata:
+  name: postgres-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: StatefulSet
+    name: postgres
+  minReplicas: 1
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 80

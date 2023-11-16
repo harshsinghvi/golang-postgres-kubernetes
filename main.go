@@ -117,7 +117,7 @@ func readinessHandler(c *gin.Context){
 func main() {
 	err := godotenv.Load()
 	if err != nil {
-	  log.Fatal("Error loading .env file")
+	  log.Printf("Error loading .env file")
 	}
 	
 	database.Connect();

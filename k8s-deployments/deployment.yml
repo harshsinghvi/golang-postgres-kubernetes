@@ -4,7 +4,7 @@ kind: Deployment # Type of Kubernetes resource
 metadata:
   name: go-todo-api # Name of the Kubernetes resource
 spec:
-  replicas: 3 # Number of pods to run at any given time
+  replicas: 1 # Number of pods to run at any given time
   selector:
     matchLabels:
       app: go-todo-api # This deployment applies to any Pods matching the specified label
@@ -19,13 +19,16 @@ spec:
         - name: go-todo-api
           image: ghcr.io/harshsinghvi/golang-postgres-kubernetes:latest
           imagePullPolicy: IfNotPresent # Always
+          envFrom: 
+            - secretRef:
+                name: app-secret
           ports:
             - containerPort: 8080 # Should match the port number that the Go application listens on
           resources:
             limits:
-              cpu: '500m'
+              cpu: "500m"
             requests:
-              cpu: '200m'
+              cpu: "200m"
           livenessProbe: # To check the health of the Pod
             httpGet:
               path: /health
@@ -64,7 +67,7 @@ metadata:
   annotations:
     alb.ingress.kubernetes.io/scheme: internet-facing
     alb.ingress.kubernetes.io/target-type: ip
-    
+
     # alb.ingress.kubernetes.io/group.name: kube-alb-group  #Use this to share ALB among multiple ingresses. #CostEffective
     # alb.ingress.kubernetes.io/load-balancer-name: kube-alb  # give ALB a meaningfull name otherwise a random name is assigned by AWS.
     # alb.ingress.kubernetes.io/certificate-arn: "arn:aws:acm:eu-west-1:XXXX:certificate/YYYY" # Get it by $ aws acm list-certificates
@@ -84,17 +87,6 @@ spec:
                   number: 8080
 
 ---
-kind: Secret
-type: kubernetes.io/dockerconfigjson
-apiVersion: v1
-metadata:
-  name: dockerconfigjson-github-com
-  labels:
-    app: app-name
-data:
-  .dockerconfigjson: eyAiYXV0aHMiOiB7ICJnaGNyLmlvIjogeyAiYXV0aCI6ImFHRnljMmh6YVc1bmFIWnBPbWRvY0Y5UU1FOHdZbXRXU0VwMVYzbHJObWRPVnpaQ1lWYzRRMFY2Y25sTFVXZ3hkRkp1UlVrPSIgfSB9IH0=
-
----
 apiVersion: autoscaling/v1
 kind: HorizontalPodAutoscaler
 metadata:
@@ -104,7 +96,6 @@ spec:
     apiVersion: apps/v1
     kind: Deployment
     name: go-todo-api
-  minReplicas: 2
+  minReplicas: 1
   maxReplicas: 10
-  targetCPUUtilizationPercentage: 30
-  
+  targetCPUUtilizationPercentage: 80
