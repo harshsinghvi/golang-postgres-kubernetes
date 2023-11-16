@@ -2,6 +2,7 @@ package database
 
 import (
 	. "harshsinghvi/golang-postgres-kubernetes/models"
+	"harshsinghvi/golang-postgres-kubernetes/utils"
 
 	"github.com/go-pg/pg/v9"
 	orm "github.com/go-pg/pg/v9/orm"
@@ -26,11 +27,17 @@ func GetDatabase() *pg.DB {
 }
 
 func Connect() *pg.DB {
+	DB_HOST := utils.GetEnv("DB_HOST", "localhost")
+	DB_PORT := utils.GetEnv("DB_PORT", "5432")
+	DB_USER := utils.GetEnv("DB_USER", "postgres")
+	DB_PASSWORD := utils.GetEnv("DB_PASSWORD", "postgres")
+	DB_NAME := utils.GetEnv("DB_NAME", "postgres")
+
 	opts := &pg.Options{
-		User:     "postgres",
-		Password: "postgres",
-		Addr:     "localhost:5432",
-		Database: "postgres",
+		User:     DB_USER,
+		Password: DB_PASSWORD,
+		Addr:     DB_HOST+":"+DB_PORT,
+		Database: DB_NAME,
 	}
 	connection = pg.Connect(opts)
 	if connection == nil {
