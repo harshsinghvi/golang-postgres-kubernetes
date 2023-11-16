@@ -1,29 +1,22 @@
 package database
 
 import (
-	. "harshsinghvi/golang-postgres-kubernetes/models"
-	"harshsinghvi/golang-postgres-kubernetes/utils"
-
 	"github.com/go-pg/pg/v9"
 	orm "github.com/go-pg/pg/v9/orm"
-	guuid "github.com/google/uuid"
+	"harshsinghvi/golang-postgres-kubernetes/models"
+	"harshsinghvi/golang-postgres-kubernetes/utils"
 	"log"
-	"os"
-
-	"github.com/gin-gonic/gin"
-	"net/http"
-	"time"
 )
 
 var database_ready = false
-var connection *pg.DB
+var Connection *pg.DB
 
 func IsDtabaseReady() bool {
 	return database_ready
 }
 
-func GetDatabase() *pg.DB {
-	return connection
+func GetDatabase() **pg.DB {
+	return &Connection
 }
 
 func Connect() *pg.DB {
@@ -39,14 +32,25 @@ func Connect() *pg.DB {
 		Addr:     DB_HOST + ":" + DB_PORT,
 		Database: DB_NAME,
 	}
-	connection = pg.Connect(opts)
-	if connection == nil {
-		log.Printf("Failed to connect")
-		os.Exit(100)
+
+	Connection = pg.Connect(opts)
+
+	if Connection == nil {
+		log.Printf("Failed to connect to database")
+		return nil
 	}
+
+	ctx := Connection.Context()
+	var version string
+	_, err := Connection.QueryOneContext(ctx, pg.Scan(&version), "SELECT version()")
+	if err != nil {
+		log.Printf("Failed to connect to database")
+		return nil
+	}
+
 	log.Printf("Connected to db")
 	database_ready = true
-	return connection
+	return Connection
 }
 
 // Create User Table
@@ -54,116 +58,12 @@ func CreateTodoTable() error {
 	opts := &orm.CreateTableOptions{
 		IfNotExists: true,
 	}
-	createError := connection.CreateTable(&Todo{}, opts)
+
+	createError := Connection.CreateTable(&models.Todo{}, opts)
 	if createError != nil {
 		log.Printf("Error while creating todo table, Reason: %v\n", createError)
 		return createError
 	}
 	log.Printf("Todo table created")
 	return nil
-}
-
-func GetAllTodos(c *gin.Context) {
-	var todos []Todo
-	err := connection.Model(&todos).Select()
-	if err != nil {
-		log.Printf("Error while getting all todos, Reason: %v\n", err)
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"status":  http.StatusInternalServerError,
-			"message": "Something went wrong",
-		})
-		return
-	}
-	c.JSON(http.StatusOK, gin.H{
-		"status":  http.StatusOK,
-		"message": "All Todos",
-		"data":    todos,
-	})
-}
-
-func GetSingleTodo(c *gin.Context) {
-	todoId := c.Param("id")
-	todo := &Todo{ID: todoId}
-	err := connection.Select(todo)
-	if err != nil {
-		log.Printf("Error while getting a single todo, Reason: %v\n", err)
-		c.JSON(http.StatusNotFound, gin.H{
-			"status":  http.StatusNotFound,
-			"message": "Todo not found",
-		})
-		return
-	}
-	c.JSON(http.StatusOK, gin.H{
-		"status":  http.StatusOK,
-		"message": "Single Todo",
-		"data":    todo,
-	})
-}
-
-func CreateTodo(c *gin.Context) {
-	var todo Todo
-	c.BindJSON(&todo)
-
-	text := todo.Text
-	id := guuid.New().String()
-
-	insertError := connection.Insert(&Todo{
-		ID:        id,
-		Text:      text,
-		Completed: false,
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
-	})
-
-	if insertError != nil {
-		log.Printf("Error while inserting new todo into db, Reason: %v\n", insertError)
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"status":  http.StatusInternalServerError,
-			"message": "Something went wrong",
-		})
-		return
-	}
-
-	c.JSON(http.StatusCreated, gin.H{
-		"status":  http.StatusCreated,
-		"message": "Todo created Successfully",
-	})
-}
-
-func EditTodo(c *gin.Context) {
-	todoId := c.Param("id")
-	var todo Todo
-	c.BindJSON(&todo)
-	completed := todo.Completed
-	_, err := connection.Model(&Todo{}).Set("completed = ?", completed).Where("id = ?", todoId).Update()
-	if err != nil {
-		log.Printf("Error, Reason: %v\n", err)
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"status":  500,
-			"message": "Something went wrong",
-		})
-		return
-	}
-	c.JSON(http.StatusOK, gin.H{
-		"status":  200,
-		"message": "Todo Edited Successfully",
-	})
-}
-
-func DeleteTodo(c *gin.Context) {
-	todoId := c.Param("id")
-	todo := &Todo{ID: todoId}
-	err := connection.Delete(todo)
-	if err != nil {
-		log.Printf("Error while deleting a single todo, Reason: %v\n", err)
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"status":  http.StatusInternalServerError,
-			"message": "Something went wrong",
-		})
-		return
-	}
-	c.JSON(http.StatusOK, gin.H{
-		"status":  http.StatusOK,
-		"message": "Todo deleted successfully",
-	})
 }
