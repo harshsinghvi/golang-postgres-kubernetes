@@ -13,13 +13,13 @@
 - <https://dev.to/ramu_mangalarapu/building-rest-apis-in-golang-go-gin-with-persistence-database-postgres-4616>
 - <https://www.coding-bootcamps.com/blog/build-containerized-applications-with-golang-on-kubernetes.html>
 - <https://docs.aws.amazon.com/eks/latest/userguide/horizontal-pod-autoscaler.html>
-- <https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale-walkthrough/>
 
 - <https://dev.to/asizikov/using-github-container-registry-with-kubernetes-38fb> ghcr.io kubernetes
 
 - <https://aws.amazon.com/blogs/containers/using-alb-ingress-controller-with-amazon-eks-on-fargate/> fargarte exose services
 - <https://docs.aws.amazon.com/eks/latest/userguide/aws-load-balancer-controller.html> alb imp
 - <https://docs.aws.amazon.com/eks/latest/userguide/alb-ingress.html> eks ingress imp
+- <https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale-walkthrough/> HPA
 
 - <https://artifacthub.io/packages/helm/metrics-server/metrics-server> install Matrics server
 - <https://docs.aws.amazon.com/eks/latest/userguide/metrics-server.html> matrics server
@@ -36,15 +36,6 @@
 - Connect external postgress to it
 - deploy postgress to Kubernetes
 - autoscale postgress deployment
-
-## AWS Resources created (tags: pingsafe-test)
-
-- EKS IAM Role
-- EKS Cluster
-- ECS Cluster
-- vpc subnets
-
-docker login -u AWS -p $(aws ecr get-login-password --region ap-south-1) 194505915562.dkr.ecr.ap-south-1.amazonaws.com
 
 ## Build docker image for eks faragete
 
@@ -65,8 +56,9 @@ docker push ghcr.io/harshsinghvi/golang-postgres-kubernetes:latest
 1. ghcr secrets for image <https://dev.to/asizikov/using-github-container-registry-with-kubernetes-38fb>
 1. deploy services (yml files) yml files includes HPA
 
-## AUTOSCALE LOGS
+## AUTOSCALE LOGS HPA
 
+`kubectl get hpa php-apache --watch`
 ```text
 go-todo-api-hpa   Deployment/go-todo-api   15%/30%   1         10        2          19m
 go-todo-api-hpa   Deployment/go-todo-api   14%/30%   1         10        1          19m
@@ -74,7 +66,6 @@ go-todo-api-hpa   Deployment/go-todo-api   15%/30%   1         10        1      
 go-todo-api-hpa   Deployment/go-todo-api   14%/30%   1         10        1          20m
 go-todo-api-hpa   Deployment/go-todo-api   15%/30%   1         10        1          20m
 go-todo-api-hpa   Deployment/go-todo-api   14%/30%   1         10        1          20m
-
 go-todo-api-hpa   Deployment/go-todo-api   22%/30%   1         10        1          21m
 go-todo-api-hpa   Deployment/go-todo-api   26%/30%   1         10        1          22m
 go-todo-api-hpa   Deployment/go-todo-api   26%/30%   1         10        1          22m
