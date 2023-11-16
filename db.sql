@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS todos (
     complete BOOLEAN NOT NULL
 );
 
-SELECT id,text, complete FROM todos
+SELECT id,text, complete FROM todos;
 
 UPDATE todos SET text='nae56', WHERE id=1;
 

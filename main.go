@@ -4,15 +4,12 @@ import (
 	// "fmt"
     "net/http"
     "github.com/gin-gonic/gin"
+	models "harshsinghvi/golang-postgres-kubernetes/models"
+	"harshsinghvi/golang-postgres-kubernetes/database"
 )
 
-type Todo struct {
-    ID     string  `json:"id"`
-    Text  string  `json:"text"`
-    Completed bool  `json:"completed"`
-	// Date  float64 `json:"date"` // TODO: implement latter
-}
-var TODOS = []Todo{
+
+var TODOS = []models.Todo{
     {ID: "1", Text: "Task 1", Completed: false},
     {ID: "2", Text: "Task 2", Completed: false},
     {ID: "3", Text: "Task 3", Completed: false},
@@ -39,7 +36,7 @@ func getTodos(c *gin.Context) {
 }
 
 func postTodos(c *gin.Context) {
-    var newTodo Todo
+    var newTodo models.Todo
 
     // Call BindJSON to bind the received JSON to
     if err := c.BindJSON(&newTodo); err != nil {
@@ -64,7 +61,7 @@ func postTodos(c *gin.Context) {
 
 func updateTodos(c *gin.Context){
 	id := c.Param("id")
-	var updateTodo Todo
+	var updateTodo models.Todo
 
     // Call BindJSON to bind the received JSON to
     if err := c.BindJSON(&updateTodo); err != nil {
@@ -104,19 +101,36 @@ func deleteTodos(c *gin.Context){
 	c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "no ID"})
 }
 
-func healthAndReadinessHandler(c *gin.Context){
+func healthHandler(c *gin.Context){
+	c.IndentedJSON(http.StatusOK, gin.H {"message": "OK"})
+}
+func readinessHandler(c *gin.Context){
+	if !database.IsDtabaseReady() {
+		c.IndentedJSON(http.StatusServiceUnavailable, gin.H {"message": "server not ready"})
+		return
+	}
 	c.IndentedJSON(http.StatusOK, gin.H {"message": "OK"})
 }
 
 func main() {
+	database.Connect();
+	database.CreateTodoTable();
+
     router := gin.Default()
-    router.GET("/todos", getTodos)
-	router.POST("/todos", postTodos)
-	router.PUT("/todos/:id", updateTodos)
-	router.DELETE("/todos/:id", deleteTodos)
+    router.GET("/v1/todo", getTodos)
+	router.POST("v1/todo", postTodos)
+	router.PUT("v1/todo/:id", updateTodos)
+	router.DELETE("v1/todo/:id", deleteTodos)
+
+	router.GET("/v2/todo", database.GetAllTodos)
+	router.GET("/v2/todos", database.GetAllTodos)
+	router.GET("/v2/todo/:id", database.GetSingleTodo)
+	router.POST("v2/todo", database.CreateTodo)
+	router.PUT("v2/todo/:id", database.EditTodo)
+	router.DELETE("v2/todo/:id", database.DeleteTodo)
 	
-    router.GET("/health", healthAndReadinessHandler)
-    router.GET("/readiness", healthAndReadinessHandler)
+    router.GET("/health", healthHandler)
+    router.GET("/readiness", readinessHandler)
 
 	router.Run(":8080")
 }
