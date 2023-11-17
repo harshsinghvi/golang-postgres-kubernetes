@@ -52,12 +52,10 @@
 ## commands
 
 ```bash
-
 kubectl rollout restart deployment/name # to update image
 kubectl get ingress # ingress exposed url
-
-aws eks update-kubeconfig --region ap-south-1 --name cluster
 kubectl exec --stdin --tty pod/postgres-0 -- /bin/bash
+aws eks update-kubeconfig --region ap-south-1 --name cluster
 ```
 
 ## GHCR image build and push

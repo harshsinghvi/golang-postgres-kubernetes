@@ -8,11 +8,18 @@ import (
 	"log"
 )
 
-var database_ready = false
 var Connection *pg.DB
 
 func IsDtabaseReady() bool {
-	return database_ready
+	ctx := Connection.Context()
+	var version string
+	
+	_, err := Connection.QueryOneContext(ctx, pg.Scan(&version), "SELECT version()")
+	if err != nil {
+		log.Printf("Failed to connect to database")
+		return false
+	}
+	return true
 }
 
 func GetDatabase() **pg.DB {
@@ -49,7 +56,7 @@ func Connect() *pg.DB {
 	}
 
 	log.Printf("Connected to db")
-	database_ready = true
+
 	return Connection
 }
 

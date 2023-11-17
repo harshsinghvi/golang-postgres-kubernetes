@@ -15,6 +15,15 @@ spec:
     spec: # Spec for the container which will run in the Pod
       imagePullSecrets:
         - name: dockerconfigjson-github-com
+      # initContainers:
+      #   - name: check-db-ready
+      #     image: postgres:latest
+      #     command: ['sh', '-c', 
+      #       'until pg_isready -h $DB_HOST -p $DB_PORT; 
+      #       do echo waiting for database; sleep 2; done;']
+      #     envFrom: 
+      #       - secretRef:
+      #           name: app-secret
       containers:
         - name: go-todo-api
           image: ghcr.io/harshsinghvi/golang-postgres-kubernetes:latest
