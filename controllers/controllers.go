@@ -93,7 +93,7 @@ func EditTodo(c *gin.Context) {
 	var todo models.Todo
 	c.BindJSON(&todo)
 
-	querry := database.Connection.Model(&models.Todo{}).Set("completed = ?", todo.Completed)
+	querry := database.Connection.Model(&models.Todo{}).Set("completed = ?", todo.Completed).Set("updated_at = ?", time.Now())
 
 	if todo.Text != "" {
 		querry.Set("text = ?", todo.Text)

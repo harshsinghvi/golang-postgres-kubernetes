@@ -13,7 +13,6 @@ var Connection *pg.DB
 func IsDtabaseReady() bool {
 	ctx := Connection.Context()
 	var version string
-	
 	_, err := Connection.QueryOneContext(ctx, pg.Scan(&version), "SELECT version()")
 	if err != nil {
 		log.Printf("Failed to connect to database")
@@ -71,6 +70,13 @@ func CreateTodoTable() error {
 		log.Printf("Error while creating todo table, Reason: %v\n", createError)
 		return createError
 	}
-	log.Printf("Todo table created")
+
+	_, err := Connection.Exec(`CREATE UNIQUE INDEX IF NOT EXISTS index_todo ON todos(id, completed, created_at, updated_at);`)
+
+	if err != nil {
+		log.Printf(err.Error())
+	}
+
+	log.Printf("Todo table and indexes created")
 	return nil
 }
