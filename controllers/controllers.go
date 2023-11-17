@@ -92,8 +92,15 @@ func EditTodo(c *gin.Context) {
 	todoId := c.Param("id")
 	var todo models.Todo
 	c.BindJSON(&todo)
-	completed := todo.Completed
-	_, err := database.Connection.Model(&models.Todo{}).Set("completed = ?", completed).Where("id = ?", todoId).Update()
+
+	querry := database.Connection.Model(&models.Todo{}).Set("completed = ?", todo.Completed)
+
+	if todo.Text != "" {
+		querry.Set("text = ?", todo.Text)
+	}
+
+	res, err := querry.Where("id = ?", todoId).Update()
+
 	if err != nil {
 		log.Printf("Error, Reason: %v\n", err)
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -102,6 +109,16 @@ func EditTodo(c *gin.Context) {
 		})
 		return
 	}
+
+	if res.RowsAffected() == 0 {
+		log.Printf("Error while update todo, Reason: \n")
+		c.JSON(http.StatusNotFound, gin.H{
+			"status":  http.StatusNotFound,
+			"message": "Todo not found",
+		})
+		return
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"status":  200,
 		"message": "Todo Edited Successfully",

@@ -11,8 +11,14 @@ services:
     networks:
       - fullstack
     environment:
-      - PORT=${PORT}  
-      - POSTGRES_URL=postgres://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}?sslmode=disable
+      - DB_HOST=${DB_HOST}
+      - DB_DRIVER=${DB_DRIVER}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_NAME=${DB_NAME}
+      - DB_PORT=${DB_PORT}
+      - POSTGRES_URL=${POSTGRES_URL}
+      # - PORT=${PORT} 
 
   postgres:
     image: postgres:latest
@@ -21,16 +27,13 @@ services:
       - POSTGRES_USER=${DB_USER}  
       - POSTGRES_PASSWORD=${DB_PASSWORD}
       - POSTGRES_DB=${DB_NAME}
-      - DATABASE_HOST=${DB_HOST} 
+      - DATABASE_HOST=${DB_HOST}
     ports:
-      - '5432:5432'
+      - 5432:5432
     volumes:
-      - ./docker-compose/postgres:/var/lib/postgresql/data
+      - ./docker-compose/postgres:/var/lib/postgresql
     networks:
-      - fullstack
-
-volumes:
-  database_postgres:                  
+      - fullstack                
 
 # Networks to be created to facilitate communication between containers
 networks:

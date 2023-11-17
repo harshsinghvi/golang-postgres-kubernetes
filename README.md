@@ -54,6 +54,7 @@
 ```bash
 kubectl rollout restart deployment/name # to update image
 kubectl get ingress # ingress exposed url
+kubectl port-forward statefulset.apps/postgres 5432:5432
 kubectl exec --stdin --tty pod/postgres-0 -- /bin/bash
 aws eks update-kubeconfig --region ap-south-1 --name cluster
 ```
@@ -64,9 +65,7 @@ aws eks update-kubeconfig --region ap-south-1 --name cluster
 
 ```bash
 docker buildx build --platform=linux/amd64 -t golang-postgres-kubernetes .
-
 docker tag golang-postgres-kubernetes ghcr.io/harshsinghvi/golang-postgres-kubernetes:latest
-
 docker push ghcr.io/harshsinghvi/golang-postgres-kubernetes:latest
 ```
 
