@@ -56,6 +56,10 @@ kubectl rollout restart deployment/name # to update image
 kubectl get ingress # ingress exposed url
 kubectl port-forward statefulset.apps/postgres 5432:5432
 kubectl exec --stdin --tty pod/postgres-0 -- /bin/bash
+kubectl logs -f  pod/go-todo-api-5587558c9b-zhb75 -c check-db-ready
+
+psql -h localhost -p 5432 -d postgres -U postgres
+
 aws eks update-kubeconfig --region ap-south-1 --name cluster
 ```
 
