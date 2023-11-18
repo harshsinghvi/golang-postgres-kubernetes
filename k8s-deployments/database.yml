@@ -1,0 +1,109 @@
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: efs-pv
+spec:
+  capacity:
+    storage: 5Gi
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: efs-sc
+  csi:
+    driver: efs.csi.aws.com
+    volumeHandle: fs-0b9f5c3cf12064d83
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: efs-claim
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: efs-sc
+  resources:
+    requests:
+      storage: 5Gi
+
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: efs-sc
+provisioner: efs.csi.aws.com
+
+---
+apiVersion: apps/v1
+kind: StatefulSet                                # Type of the kubernetes resource
+metadata:
+  name: postgres                       # Name of the statefulset
+  labels:                                        # Labels applied to this statefulset 
+    app: postgres
+spec:
+  serviceName: postgres
+  selector:
+    matchLabels:                                  # This statefulset applies to the Pods matching the specified labels
+      app: postgres
+      tier: postgres
+  replicas: 1
+  template:                                    # Template for the Pods in this statefulset
+    metadata:
+      labels:                                     # Labels to be applied to the Pods in this statefulset
+        app: postgres
+        tier: postgres
+    spec:                                         # The spec for the containers that will be run inside the Pods in this statefulset
+      containers:
+        - image: postgres:latest                  # The container image
+          name: postgres
+          imagePullPolicy: "IfNotPresent"
+          envFrom:                                # Get the environmental variables from a secret file whose name is "postgres-secret" 
+            - secretRef:
+                name: postgres-secret
+          ports:
+            - containerPort: 5432                   # The port that the container exposes 
+              name: postgres
+          resources:
+            limits:
+              cpu: "500m"
+            requests:
+              cpu: "200m"
+          volumeMounts:
+            - mountPath: /var/lib/postgresql/data
+              name: postgres-persistent-storage     # This name should match the name specified in `volumes.name`
+      volumes:                                      # A PersistentVolume is mounted as a volume to the Pod 
+        - name: postgres-persistent-storage
+          persistentVolumeClaim:
+            claimName: efs-claim
+
+---
+apiVersion: v1                                      # API version
+kind: Service                                       # Type of kubernetes resource 
+metadata:
+  name: postgres                          # Name of the resource
+  labels:                                           # Labels that will be applied to the resource
+    app: postgres
+spec:
+  ports:
+    - name: db
+      port: 5432
+      targetPort: 5432                              # Exposing default port of 5432.
+  selector:                                         # Selects any Pod with labels `app=fullstack-postgres,tier=postgres`
+    app: postgres
+    tier: postgres
+
+---
+apiVersion: autoscaling/v1
+kind: HorizontalPodAutoscaler
+metadata:
+  name: postgres-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: StatefulSet
+    name: postgres
+  minReplicas: 1
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 80
