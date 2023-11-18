@@ -6,24 +6,43 @@ import (
 	guuid "github.com/google/uuid"
 	"log"
 	"net/http"
+	"strconv"
 	"time"
 
 	"harshsinghvi/golang-postgres-kubernetes/database"
 	"harshsinghvi/golang-postgres-kubernetes/models"
 )
 
-// var (connection *pg.DB )// = *database.GetDatabase()
-
-// init() {
-// 	connection =  = *database.GetDatabase()
-// }
-
-// connection := *database.GetDatabase()
-
 func GetAllTodos(c *gin.Context) {
-
+	var page int
 	var todos []models.Todo
-	err := database.Connection.Model(&todos).Select()
+
+	totalRecords, err := database.Connection.Model(&todos).Count()
+	if err != nil {
+		log.Printf("Error while getting all todos, Reason: %v\n", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"status":  http.StatusInternalServerError,
+			"message": "Something went wrong",
+		})
+		return
+	}
+
+	totalPages := totalRecords / 10
+
+	if c.Query("page") == "" {
+		page = 1
+	} else {
+		page, _ = strconv.Atoi(c.Query("page"))
+		if page == -1 {
+			err = database.Connection.Model(&todos).Order("created_at DESC").Select()
+		} else {
+			if page < 1 {
+				page = 1
+			}
+			err = database.Connection.Model(&todos).Order("created_at DESC").Limit(10).Offset(10 * page).Select()
+		}
+	}
+
 	if err != nil {
 		log.Printf("Error while getting all todos, Reason: %v\n", err)
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -36,6 +55,13 @@ func GetAllTodos(c *gin.Context) {
 		"status":  http.StatusOK,
 		"message": "All Todos",
 		"data":    todos,
+		"pagination": gin.H{
+			"total_records": totalRecords,
+			"current_page":  page,
+			"total_pages":   totalPages,
+			"next_page":     page + 1,
+			"prev_page":     page - 1,
+		},
 	})
 }
 

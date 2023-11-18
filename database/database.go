@@ -74,7 +74,7 @@ func CreateTodoTable() error {
 	_, err := Connection.Exec(`CREATE UNIQUE INDEX IF NOT EXISTS index_todo ON todos(id, completed, created_at, updated_at);`)
 
 	if err != nil {
-		log.Printf(err.Error())
+		log.Println(err.Error())
 	}
 
 	log.Printf("Todo table and indexes created")

@@ -56,7 +56,7 @@ kubectl rollout restart deployment/name # to update image
 kubectl get ingress # ingress exposed url
 kubectl port-forward statefulset.apps/postgres 5432:5432
 kubectl exec --stdin --tty pod/postgres-0 -- /bin/bash
-kubectl logs -f  pod/go-todo-api-5587558c9b-zhb75 -c check-db-ready
+kubectl logs -f pod/go-todo-api-5587558c9b-zhb75 -c check-db-ready
 
 psql -h localhost -p 5432 -d postgres -U postgres
 
@@ -146,7 +146,6 @@ cidr_range=$(aws ec2 describe-vpcs \
     --output text \
     --region $AWS_EKS_CLUSTER_REGION)
 
-
 security_group_id=$(aws ec2 create-security-group \
     --group-name MyEfsSecurityGroup \
     --description "My EFS security group" \
@@ -164,7 +163,6 @@ file_system_id=$(aws efs create-file-system \
     --performance-mode generalPurpose \
     --query 'FileSystemId' \
     --output text)
-
 
 aws ec2 describe-subnets \
     --filters "Name=vpc-id,Values=$vpc_id" \

@@ -5,7 +5,7 @@ metadata:
   labels:
     app: loadgenerator
 spec:
-  replicas: 3
+  replicas: 50
   selector:
     matchLabels:
       app: loadgenerator
@@ -22,4 +22,4 @@ spec:
           command:
           - /bin/sh
           - -c
-          - "while true; do wget -q -O- http://golang-todo-api-service:8080/todos; done"
+          - "while true; do wget -q -O- http://golang-todo-api-service:8080/api/v2/todo; done"
