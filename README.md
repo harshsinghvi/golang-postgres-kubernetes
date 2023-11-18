@@ -1,5 +1,42 @@
 # golang-postgres-kubernetes
 
+> Autoscaling golang api with EKS and AWS fargate
+
+## Technologies used
+
+- AWS EKS - Kubernetes
+- AWS fargate - Node Provisioning
+- AWS EFS - PVC for database in kubernetes cluster
+- ELB for Ingress
+- GoLang - Gin API
+- Database - Postgress
+- repo and container registry - github and GHCR
+- API Testing Tools - Apache Benchmark, Postman
+
+## K8S Setup procedure
+
+1. eksctl faragete cluster `eksctl create cluster --name cluster --region ap-south-1 --fargate`
+1. cluster ALB ingress <https://docs.aws.amazon.com/eks/latest/userguide/aws-load-balancer-controller.html>
+1. setup matrics server (for HPA) from YML `k8s-eks-system/matrics-server.yaml`
+1. sertup efs (elastic file storage) <https://github.com/kubernetes-sigs/aws-efs-csi-driver/blob/master/docs/efs-create-filesystem.md> get file_system_id and replace volumeHandle: fs-1234567899 in `k8s-deployments/database.yml`
+1. ghcr secrets for image <https://dev.to/asizikov/using-github-container-registry-with-kubernetes-38fb> replace required fields in secrets.yml
+1. deploy application and database (yml files) yml files includes HPA - `k8s-deployments`
+1. generate load using `k8s-eks-system/loadgenerator.yml` file
+
+## TODOS
+
+- ~~ Golang API ~~
+- ~~ Deploy go API to Kubernetes ~~
+- ~~ test autoscaling using Apache benchmark and postman ~~
+- ~~ setup CI/CD pipeline ~~
+- ~~ Connect external postgress to it ~~
+- ~~ deploy postgress to Kubernetes ~~
+- ~~ autoscale postgress deployment ~~
+- scale down to zero (Coldstart)
+- api rate limiting and security
+- API Auth
+- API Access Logs and Billing
+
 ## practice
 
 - postgressql - indexing, explain querry
@@ -27,29 +64,134 @@
 
 - golang postgres api <https://medium.com/@cavdy/creating-restful-api-using-golang-and-postgres-part-2-542aac86e2bd> <https://medium.com/@cavdy/creating-restful-api-using-golang-and-postgres-part-1-58fe83c6f1ee>
 
-## TODOS
+- <https://github.com/slackapi/slack-github-action> slack webhook gh actions
 
-- Golang API
-- Deploy go API to Kubernetes
+## AUTOSCALE LOGS HPA
 
-- test autoscaling using Apache benchmark
+`kubectl get hpa --watch`
 
-- setup CI/CD pipeline
-- Connect external postgress to it
-- deploy postgress to Kubernetes
-- autoscale postgress deployment
+```text
+NAME              REFERENCE                TARGETS   MINPODS   MAXPODS   REPLICAS   AGE
+go-todo-api-hpa   Deployment/go-todo-api   15%/30%   1         10        2          19m
+go-todo-api-hpa   Deployment/go-todo-api   14%/30%   1         10        1          19m
+go-todo-api-hpa   Deployment/go-todo-api   15%/30%   1         10        1          19m
+go-todo-api-hpa   Deployment/go-todo-api   14%/30%   1         10        1          20m
+go-todo-api-hpa   Deployment/go-todo-api   15%/30%   1         10        1          20m
+go-todo-api-hpa   Deployment/go-todo-api   14%/30%   1         10        1          20m
+go-todo-api-hpa   Deployment/go-todo-api   22%/30%   1         10        1          21m
+go-todo-api-hpa   Deployment/go-todo-api   26%/30%   1         10        1          22m
+go-todo-api-hpa   Deployment/go-todo-api   26%/30%   1         10        1          22m
+go-todo-api-hpa   Deployment/go-todo-api   27%/30%   1         10        1          22m
+go-todo-api-hpa   Deployment/go-todo-api   25%/30%   1         10        1          22m
+go-todo-api-hpa   Deployment/go-todo-api   26%/30%   1         10        1          23m
+go-todo-api-hpa   Deployment/go-todo-api   26%/30%   1         10        1          23m
+go-todo-api-hpa   Deployment/go-todo-api   27%/30%   1         10        1          23m
+go-todo-api-hpa   Deployment/go-todo-api   26%/30%   1         10        1          23m
+go-todo-api-hpa   Deployment/go-todo-api   36%/30%   1         10        1          24m
+go-todo-api-hpa   Deployment/go-todo-api   37%/30%   1         10        2          24m
+go-todo-api-hpa   Deployment/go-todo-api   38%/30%   1         10        2          24m
+go-todo-api-hpa   Deployment/go-todo-api   38%/30%   1         10        2          24m
+go-todo-api-hpa   Deployment/go-todo-api   37%/30%   1         10        2          25m
+go-todo-api-hpa   Deployment/go-todo-api   29%/30%   1         10        2          25m
+go-todo-api-hpa   Deployment/go-todo-api   22%/30%   1         10        2          25m
+go-todo-api-hpa   Deployment/go-todo-api   21%/30%   1         10        2          26m
+go-todo-api-hpa   Deployment/go-todo-api   21%/30%   1         10        2          26m
+go-todo-api-hpa   Deployment/go-todo-api   21%/30%   1         10        2          27m
+go-todo-api-hpa   Deployment/go-todo-api   21%/30%   1         10        2          28m
+go-todo-api-hpa   Deployment/go-todo-api   21%/30%   1         10        2          28m
+go-todo-api-hpa   Deployment/go-todo-api   21%/30%   1         10        2          28m
+go-todo-api-hpa   Deployment/go-todo-api   21%/30%   1         10        2          29m
+go-todo-api-hpa   Deployment/go-todo-api   67%/30%   1         10        2          29m
+go-todo-api-hpa   Deployment/go-todo-api   73%/30%   1         10        4          29m
+go-todo-api-hpa   Deployment/go-todo-api   75%/30%   1         10        5          29m
+go-todo-api-hpa   Deployment/go-todo-api   74%/30%   1         10        5          30m
+go-todo-api-hpa   Deployment/go-todo-api   73%/30%   1         10        5          30m
+go-todo-api-hpa   Deployment/go-todo-api   72%/30%   1         10        5          30m
+go-todo-api-hpa   Deployment/go-todo-api   23%/30%   1         10        5          30m
+go-todo-api-hpa   Deployment/go-todo-api   8%/30%    1         10        5          31m
+go-todo-api-hpa   Deployment/go-todo-api   6%/30%    1         10        5          31m
+go-todo-api-hpa   Deployment/go-todo-api   3%/30%    1         10        5          31m
+go-todo-api-hpa   Deployment/go-todo-api   3%/30%    1         10        5          31m
+go-todo-api-hpa   Deployment/go-todo-api   3%/30%    1         10        5          32m
+go-todo-api-hpa   Deployment/go-todo-api   28%/30%   1         10        5          32m
+go-todo-api-hpa   Deployment/go-todo-api   40%/30%   1         10        5          32m
+go-todo-api-hpa   Deployment/go-todo-api   40%/30%   1         10        7          32m
+go-todo-api-hpa   Deployment/go-todo-api   39%/30%   1         10        7          33m
+go-todo-api-hpa   Deployment/go-todo-api   43%/30%   1         10        7          33m
+go-todo-api-hpa   Deployment/go-todo-api   36%/30%   1         10        7          33m
+go-todo-api-hpa   Deployment/go-todo-api   22%/30%   1         10        7          33m
+go-todo-api-hpa   Deployment/go-todo-api   15%/30%   1         10        7          34m
+go-todo-api-hpa   Deployment/go-todo-api   13%/30%   1         10        7          34m
+go-todo-api-hpa   Deployment/go-todo-api   7%/30%    1         10        7          34m
+go-todo-api-hpa   Deployment/go-todo-api   6%/30%    1         10        7          34m
+go-todo-api-hpa   Deployment/go-todo-api   7%/30%    1         10        7          35m
+go-todo-api-hpa   Deployment/go-todo-api   19%/30%   1         10        7          35m
+go-todo-api-hpa   Deployment/go-todo-api   32%/30%   1         10        7          35m
+go-todo-api-hpa   Deployment/go-todo-api   33%/30%   1         10        7          36m
+go-todo-api-hpa   Deployment/go-todo-api   42%/30%   1         10        7          36m
+go-todo-api-hpa   Deployment/go-todo-api   38%/30%   1         10        7          36m
+go-todo-api-hpa   Deployment/go-todo-api   24%/30%   1         10        7          36m
+go-todo-api-hpa   Deployment/go-todo-api   17%/30%   1         10        7          37m
+go-todo-api-hpa   Deployment/go-todo-api   16%/30%   1         10        7          37m
+go-todo-api-hpa   Deployment/go-todo-api   9%/30%    1         10        7          37m
+go-todo-api-hpa   Deployment/go-todo-api   9%/30%    1         10        7          37m
+go-todo-api-hpa   Deployment/go-todo-api   10%/30%   1         10        7          38m
+go-todo-api-hpa   Deployment/go-todo-api   19%/30%   1         10        7          38m
+go-todo-api-hpa   Deployment/go-todo-api   24%/30%   1         10        7          38m
+go-todo-api-hpa   Deployment/go-todo-api   31%/30%   1         10        7          39m
+go-todo-api-hpa   Deployment/go-todo-api   44%/30%   1         10        7          39m
+go-todo-api-hpa   Deployment/go-todo-api   45%/30%   1         10        7          39m
+go-todo-api-hpa   Deployment/go-todo-api   34%/30%   1         10        7          39m
+go-todo-api-hpa   Deployment/go-todo-api   21%/30%   1         10        7          40m
+go-todo-api-hpa   Deployment/go-todo-api   22%/30%   1         10        7          40m
+go-todo-api-hpa   Deployment/go-todo-api   13%/30%   1         10        7          40m
+go-todo-api-hpa   Deployment/go-todo-api   30%/30%   1         10        7          41m
+go-todo-api-hpa   Deployment/go-todo-api   40%/30%   1         10        7          41m
+go-todo-api-hpa   Deployment/go-todo-api   38%/30%   1         10        7          41m
+go-todo-api-hpa   Deployment/go-todo-api   36%/30%   1         10        7          42m
+go-todo-api-hpa   Deployment/go-todo-api   32%/30%   1         10        7          42m
+go-todo-api-hpa   Deployment/go-todo-api   31%/30%   1         10        7          42m
+go-todo-api-hpa   Deployment/go-todo-api   29%/30%   1         10        7          43m
+go-todo-api-hpa   Deployment/go-todo-api   25%/30%   1         10        7          43m
+go-todo-api-hpa   Deployment/go-todo-api   20%/30%   1         10        7          44m
+go-todo-api-hpa   Deployment/go-todo-api   19%/30%   1         10        7          44m
+go-todo-api-hpa   Deployment/go-todo-api   19%/30%   1         10        7          44m
+go-todo-api-hpa   Deployment/go-todo-api   21%/30%   1         10        7          44m
+go-todo-api-hpa   Deployment/go-todo-api   19%/30%   1         10        7          45m
+go-todo-api-hpa   Deployment/go-todo-api   16%/30%   1         10        7          45m
+go-todo-api-hpa   Deployment/go-todo-api   16%/30%   1         10        7          45m
+go-todo-api-hpa   Deployment/go-todo-api   17%/30%   1         10        7          45m
+go-todo-api-hpa   Deployment/go-todo-api   14%/30%   1         10        7          46m
+go-todo-api-hpa   Deployment/go-todo-api   15%/30%   1         10        7          46m
+go-todo-api-hpa   Deployment/go-todo-api   18%/30%   1         10        7          46m
+go-todo-api-hpa   Deployment/go-todo-api   14%/30%   1         10        7          46m
+go-todo-api-hpa   Deployment/go-todo-api   14%/30%   1         10        7          47m
+go-todo-api-hpa   Deployment/go-todo-api   18%/30%   1         10        7          47m
+go-todo-api-hpa   Deployment/go-todo-api   14%/30%   1         10        7          47m
+go-todo-api-hpa   Deployment/go-todo-api   13%/30%   1         10        7          47m
+go-todo-api-hpa   Deployment/go-todo-api   15%/30%   1         10        7          48m
+go-todo-api-hpa   Deployment/go-todo-api   15%/30%   1         10        7          48m
+go-todo-api-hpa   Deployment/go-todo-api   13%/30%   1         10        7          48m
+go-todo-api-hpa   Deployment/go-todo-api   13%/30%   1         10        5          48m
+go-todo-api-hpa   Deployment/go-todo-api   15%/30%   1         10        4          49m
+go-todo-api-hpa   Deployment/go-todo-api   16%/30%   1         10        4          49m
+go-todo-api-hpa   Deployment/go-todo-api   15%/30%   1         10        4          49m
+go-todo-api-hpa   Deployment/go-todo-api   18%/30%   1         10        4          49m
+go-todo-api-hpa   Deployment/go-todo-api   18%/30%   1         10        4          50m
+go-todo-api-hpa   Deployment/go-todo-api   18%/30%   1         10        3          50m
+go-todo-api-hpa   Deployment/go-todo-api   20%/30%   1         10        3          50m
+go-todo-api-hpa   Deployment/go-todo-api   24%/30%   1         10        3          50m
+go-todo-api-hpa   Deployment/go-todo-api   24%/30%   1         10        3          51m
+go-todo-api-hpa   Deployment/go-todo-api   22%/30%   1         10        3          51m
+go-todo-api-hpa   Deployment/go-todo-api   23%/30%   1         10        3          52m
+go-todo-api-hpa   Deployment/go-todo-api   22%/30%   1         10        3          52m
+go-todo-api-hpa   Deployment/go-todo-api   23%/30%   1         10        3          52m
+go-todo-api-hpa   Deployment/go-todo-api   20%/30%   1         10        3          52m
+go-todo-api-hpa   Deployment/go-todo-api   8%/30%    1         10        3          53m
+go-todo-api-hpa   Deployment/go-todo-api   0%/30%    1         10        3          53m
+```
 
-## K8S procedure
-
-1. eksctl faragete cluster `eksctl create cluster --name cluster --region ap-south-1 --fargate`
-1. cluster ALB ingress <https://docs.aws.amazon.com/eks/latest/userguide/aws-load-balancer-controller.html>
-1. setup matrics server (for HPA) from YML
-1. sertup efs (elastic file storage) <https://github.com/kubernetes-sigs/aws-efs-csi-driver/blob/master/docs/efs-create-filesystem.md> get file_system_id and replace volumeHandle: fs-1234567899 in database.yml
-1. ghcr secrets for image <https://dev.to/asizikov/using-github-container-registry-with-kubernetes-38fb> replace required fields in secrets.yml
-
-1. deploy services (yml files) yml files includes HPA
-
-## commands
+## Commands
 
 ```bash
 kubectl rollout restart deployment/name # to update image
@@ -194,128 +336,4 @@ aws efs create-mount-target \
     --file-system-id $file_system_id \
     --subnet-id subnet-0360ff2918bf5fceb  \
     --security-groups $security_group_id
-```
-
-## AUTOSCALE LOGS HPA
-
-`kubectl get hpa --watch`
-
-```text
-go-todo-api-hpa   Deployment/go-todo-api   15%/30%   1         10        2          19m
-go-todo-api-hpa   Deployment/go-todo-api   14%/30%   1         10        1          19m
-go-todo-api-hpa   Deployment/go-todo-api   15%/30%   1         10        1          19m
-go-todo-api-hpa   Deployment/go-todo-api   14%/30%   1         10        1          20m
-go-todo-api-hpa   Deployment/go-todo-api   15%/30%   1         10        1          20m
-go-todo-api-hpa   Deployment/go-todo-api   14%/30%   1         10        1          20m
-go-todo-api-hpa   Deployment/go-todo-api   22%/30%   1         10        1          21m
-go-todo-api-hpa   Deployment/go-todo-api   26%/30%   1         10        1          22m
-go-todo-api-hpa   Deployment/go-todo-api   26%/30%   1         10        1          22m
-go-todo-api-hpa   Deployment/go-todo-api   27%/30%   1         10        1          22m
-go-todo-api-hpa   Deployment/go-todo-api   25%/30%   1         10        1          22m
-go-todo-api-hpa   Deployment/go-todo-api   26%/30%   1         10        1          23m
-go-todo-api-hpa   Deployment/go-todo-api   26%/30%   1         10        1          23m
-go-todo-api-hpa   Deployment/go-todo-api   27%/30%   1         10        1          23m
-go-todo-api-hpa   Deployment/go-todo-api   26%/30%   1         10        1          23m
-go-todo-api-hpa   Deployment/go-todo-api   36%/30%   1         10        1          24m
-go-todo-api-hpa   Deployment/go-todo-api   37%/30%   1         10        2          24m
-go-todo-api-hpa   Deployment/go-todo-api   38%/30%   1         10        2          24m
-go-todo-api-hpa   Deployment/go-todo-api   38%/30%   1         10        2          24m
-go-todo-api-hpa   Deployment/go-todo-api   37%/30%   1         10        2          25m
-go-todo-api-hpa   Deployment/go-todo-api   29%/30%   1         10        2          25m
-go-todo-api-hpa   Deployment/go-todo-api   22%/30%   1         10        2          25m
-go-todo-api-hpa   Deployment/go-todo-api   21%/30%   1         10        2          26m
-go-todo-api-hpa   Deployment/go-todo-api   21%/30%   1         10        2          26m
-go-todo-api-hpa   Deployment/go-todo-api   21%/30%   1         10        2          27m
-go-todo-api-hpa   Deployment/go-todo-api   21%/30%   1         10        2          28m
-go-todo-api-hpa   Deployment/go-todo-api   21%/30%   1         10        2          28m
-go-todo-api-hpa   Deployment/go-todo-api   21%/30%   1         10        2          28m
-go-todo-api-hpa   Deployment/go-todo-api   21%/30%   1         10        2          29m
-go-todo-api-hpa   Deployment/go-todo-api   67%/30%   1         10        2          29m
-go-todo-api-hpa   Deployment/go-todo-api   73%/30%   1         10        4          29m
-go-todo-api-hpa   Deployment/go-todo-api   75%/30%   1         10        5          29m
-go-todo-api-hpa   Deployment/go-todo-api   74%/30%   1         10        5          30m
-go-todo-api-hpa   Deployment/go-todo-api   73%/30%   1         10        5          30m
-go-todo-api-hpa   Deployment/go-todo-api   72%/30%   1         10        5          30m
-go-todo-api-hpa   Deployment/go-todo-api   23%/30%   1         10        5          30m
-go-todo-api-hpa   Deployment/go-todo-api   8%/30%    1         10        5          31m
-go-todo-api-hpa   Deployment/go-todo-api   6%/30%    1         10        5          31m
-go-todo-api-hpa   Deployment/go-todo-api   3%/30%    1         10        5          31m
-go-todo-api-hpa   Deployment/go-todo-api   3%/30%    1         10        5          31m
-go-todo-api-hpa   Deployment/go-todo-api   3%/30%    1         10        5          32m
-go-todo-api-hpa   Deployment/go-todo-api   28%/30%   1         10        5          32m
-go-todo-api-hpa   Deployment/go-todo-api   40%/30%   1         10        5          32m
-go-todo-api-hpa   Deployment/go-todo-api   40%/30%   1         10        7          32m
-go-todo-api-hpa   Deployment/go-todo-api   39%/30%   1         10        7          33m
-go-todo-api-hpa   Deployment/go-todo-api   43%/30%   1         10        7          33m
-go-todo-api-hpa   Deployment/go-todo-api   36%/30%   1         10        7          33m
-go-todo-api-hpa   Deployment/go-todo-api   22%/30%   1         10        7          33m
-go-todo-api-hpa   Deployment/go-todo-api   15%/30%   1         10        7          34m
-go-todo-api-hpa   Deployment/go-todo-api   13%/30%   1         10        7          34m
-go-todo-api-hpa   Deployment/go-todo-api   7%/30%    1         10        7          34m
-go-todo-api-hpa   Deployment/go-todo-api   6%/30%    1         10        7          34m
-go-todo-api-hpa   Deployment/go-todo-api   7%/30%    1         10        7          35m
-go-todo-api-hpa   Deployment/go-todo-api   19%/30%   1         10        7          35m
-go-todo-api-hpa   Deployment/go-todo-api   32%/30%   1         10        7          35m
-go-todo-api-hpa   Deployment/go-todo-api   33%/30%   1         10        7          36m
-go-todo-api-hpa   Deployment/go-todo-api   42%/30%   1         10        7          36m
-go-todo-api-hpa   Deployment/go-todo-api   38%/30%   1         10        7          36m
-go-todo-api-hpa   Deployment/go-todo-api   24%/30%   1         10        7          36m
-go-todo-api-hpa   Deployment/go-todo-api   17%/30%   1         10        7          37m
-go-todo-api-hpa   Deployment/go-todo-api   16%/30%   1         10        7          37m
-go-todo-api-hpa   Deployment/go-todo-api   9%/30%    1         10        7          37m
-go-todo-api-hpa   Deployment/go-todo-api   9%/30%    1         10        7          37m
-go-todo-api-hpa   Deployment/go-todo-api   10%/30%   1         10        7          38m
-go-todo-api-hpa   Deployment/go-todo-api   19%/30%   1         10        7          38m
-go-todo-api-hpa   Deployment/go-todo-api   24%/30%   1         10        7          38m
-go-todo-api-hpa   Deployment/go-todo-api   31%/30%   1         10        7          39m
-go-todo-api-hpa   Deployment/go-todo-api   44%/30%   1         10        7          39m
-go-todo-api-hpa   Deployment/go-todo-api   45%/30%   1         10        7          39m
-go-todo-api-hpa   Deployment/go-todo-api   34%/30%   1         10        7          39m
-go-todo-api-hpa   Deployment/go-todo-api   21%/30%   1         10        7          40m
-go-todo-api-hpa   Deployment/go-todo-api   22%/30%   1         10        7          40m
-go-todo-api-hpa   Deployment/go-todo-api   13%/30%   1         10        7          40m
-go-todo-api-hpa   Deployment/go-todo-api   30%/30%   1         10        7          41m
-go-todo-api-hpa   Deployment/go-todo-api   40%/30%   1         10        7          41m
-go-todo-api-hpa   Deployment/go-todo-api   38%/30%   1         10        7          41m
-go-todo-api-hpa   Deployment/go-todo-api   36%/30%   1         10        7          42m
-go-todo-api-hpa   Deployment/go-todo-api   32%/30%   1         10        7          42m
-go-todo-api-hpa   Deployment/go-todo-api   31%/30%   1         10        7          42m
-go-todo-api-hpa   Deployment/go-todo-api   29%/30%   1         10        7          43m
-go-todo-api-hpa   Deployment/go-todo-api   25%/30%   1         10        7          43m
-go-todo-api-hpa   Deployment/go-todo-api   20%/30%   1         10        7          44m
-go-todo-api-hpa   Deployment/go-todo-api   19%/30%   1         10        7          44m
-go-todo-api-hpa   Deployment/go-todo-api   19%/30%   1         10        7          44m
-go-todo-api-hpa   Deployment/go-todo-api   21%/30%   1         10        7          44m
-go-todo-api-hpa   Deployment/go-todo-api   19%/30%   1         10        7          45m
-go-todo-api-hpa   Deployment/go-todo-api   16%/30%   1         10        7          45m
-go-todo-api-hpa   Deployment/go-todo-api   16%/30%   1         10        7          45m
-go-todo-api-hpa   Deployment/go-todo-api   17%/30%   1         10        7          45m
-go-todo-api-hpa   Deployment/go-todo-api   14%/30%   1         10        7          46m
-go-todo-api-hpa   Deployment/go-todo-api   15%/30%   1         10        7          46m
-go-todo-api-hpa   Deployment/go-todo-api   18%/30%   1         10        7          46m
-go-todo-api-hpa   Deployment/go-todo-api   14%/30%   1         10        7          46m
-go-todo-api-hpa   Deployment/go-todo-api   14%/30%   1         10        7          47m
-go-todo-api-hpa   Deployment/go-todo-api   18%/30%   1         10        7          47m
-go-todo-api-hpa   Deployment/go-todo-api   14%/30%   1         10        7          47m
-go-todo-api-hpa   Deployment/go-todo-api   13%/30%   1         10        7          47m
-go-todo-api-hpa   Deployment/go-todo-api   15%/30%   1         10        7          48m
-go-todo-api-hpa   Deployment/go-todo-api   15%/30%   1         10        7          48m
-go-todo-api-hpa   Deployment/go-todo-api   13%/30%   1         10        7          48m
-go-todo-api-hpa   Deployment/go-todo-api   13%/30%   1         10        5          48m
-go-todo-api-hpa   Deployment/go-todo-api   15%/30%   1         10        4          49m
-go-todo-api-hpa   Deployment/go-todo-api   16%/30%   1         10        4          49m
-go-todo-api-hpa   Deployment/go-todo-api   15%/30%   1         10        4          49m
-go-todo-api-hpa   Deployment/go-todo-api   18%/30%   1         10        4          49m
-go-todo-api-hpa   Deployment/go-todo-api   18%/30%   1         10        4          50m
-go-todo-api-hpa   Deployment/go-todo-api   18%/30%   1         10        3          50m
-go-todo-api-hpa   Deployment/go-todo-api   20%/30%   1         10        3          50m
-go-todo-api-hpa   Deployment/go-todo-api   24%/30%   1         10        3          50m
-go-todo-api-hpa   Deployment/go-todo-api   24%/30%   1         10        3          51m
-go-todo-api-hpa   Deployment/go-todo-api   22%/30%   1         10        3          51m
-go-todo-api-hpa   Deployment/go-todo-api   23%/30%   1         10        3          52m
-go-todo-api-hpa   Deployment/go-todo-api   22%/30%   1         10        3          52m
-go-todo-api-hpa   Deployment/go-todo-api   23%/30%   1         10        3          52m
-go-todo-api-hpa   Deployment/go-todo-api   20%/30%   1         10        3          52m
-go-todo-api-hpa   Deployment/go-todo-api   8%/30%    1         10        3          53m
-go-todo-api-hpa   Deployment/go-todo-api   0%/30%    1         10        3          53m
 ```
