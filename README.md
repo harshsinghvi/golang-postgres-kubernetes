@@ -34,8 +34,10 @@
 - ~~ autoscale postgress deployment ~~
 - scale down to zero (Coldstart)
 - api rate limiting and security
-- API Auth
-- API Access Logs and Billing
+- ~~ API Auth and Access Logs ~~
+- access token roles
+- API Billing
+- API analytics
 
 ## practice
 
@@ -65,6 +67,7 @@
 - golang postgres api <https://medium.com/@cavdy/creating-restful-api-using-golang-and-postgres-part-2-542aac86e2bd> <https://medium.com/@cavdy/creating-restful-api-using-golang-and-postgres-part-1-58fe83c6f1ee>
 
 - <https://github.com/slackapi/slack-github-action> slack webhook gh actions
+- <https://sosedoff.com/2014/12/21/gin-middleware.html> go middleware
 
 ## AUTOSCALE LOGS HPA
 

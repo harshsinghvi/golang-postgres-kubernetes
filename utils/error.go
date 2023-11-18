@@ -13,3 +13,11 @@ func InternalServerError(c *gin.Context, msg string, err error) {
 		"message": "Something went wrong",
 	})
 }
+
+func UnauthorizedResponse(c *gin.Context) {
+	c.JSON(http.StatusUnauthorized, gin.H{
+		"status":  http.StatusUnauthorized,
+		"message": "Invalid or Expired Token, please check token or include tokens in the headers",
+	})
+	c.Abort()
+}

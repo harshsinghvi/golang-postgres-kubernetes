@@ -132,3 +132,67 @@ func DeleteTodo(c *gin.Context) {
 		"message": "Todo deleted successfully",
 	})
 }
+
+func CreateNewToken(c *gin.Context) {
+	id := guuid.New().String()
+	token := utils.GenerateToken(id)
+	var accessToken models.AccessToken
+	c.BindJSON(&accessToken)
+
+	insertError := database.Connection.Insert(&models.AccessToken{
+		ID:        id,
+		Token:     token,
+		Email:     accessToken.Email, // TODO: validate Email
+		Expiry:    time.Now().AddDate(0, 0, 10),
+		CreatedAt: time.Now(),
+	})
+
+	if insertError != nil {
+		utils.InternalServerError(c, "Error while inserting new todo into db, Reason:", insertError)
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{
+		"status":  http.StatusCreated,
+		"message": "Token created Successfully",
+		"token":   token,
+	})
+}
+
+// Get tokens by email
+
+func GetTokens(c *gin.Context) {
+	email := c.Param("email")
+	var pag models.Pagination
+	var err error
+	var accessTokens []models.AccessToken
+	var pageString = c.Query("page")
+	pag.ParseString(pageString)
+
+	querry := database.Connection.Model(&accessTokens).Order("created_at DESC")
+
+	if email != "admin" {
+		querry = querry.Where("email = ?", email)
+	}
+
+	if pag.TotalRecords, err = querry.Count(); err != nil {
+		utils.InternalServerError(c, "Error while getting tokens, Reason:", err)
+		return
+	}
+
+	if pag.CurrentPage != -1 {
+		querry = querry.Limit(10).Offset(10 * (pag.CurrentPage))
+	}
+
+	if err := querry.Select(); err != nil {
+		utils.InternalServerError(c, "Error while getting Tokens, Reason:", err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"status":     http.StatusOK,
+		"message":    fmt.Sprintf("All Tokens by %s", email),
+		"data":       accessTokens,
+		"pagination": pag.Validate(),
+	})
+}

@@ -59,24 +59,35 @@ func Connect() *pg.DB {
 	return Connection
 }
 
-// Create User Table
-func CreateTodoTable() error {
+func CreateTables() error {
 	opts := &orm.CreateTableOptions{
 		IfNotExists: true,
 	}
-
-	createError := Connection.CreateTable(&models.Todo{}, opts)
-	if createError != nil {
+	if createError := Connection.CreateTable(&models.Todo{}, opts); createError != nil {
 		log.Printf("Error while creating todo table, Reason: %v\n", createError)
 		return createError
 	}
-
-	_, err := Connection.Exec(`CREATE UNIQUE INDEX IF NOT EXISTS index_todo ON todos(id, completed, created_at, updated_at);`)
-
-	if err != nil {
+	if _, err := Connection.Exec(`CREATE UNIQUE INDEX IF NOT EXISTS go_index_todos ON todos(completed, created_at);`); err != nil {
 		log.Println(err.Error())
+		return err
 	}
-
+	if createError := Connection.CreateTable(&models.AccessToken{}, opts); createError != nil {
+		log.Printf("Error while creating access_tokens table, Reason: %v\n", createError)
+		return createError
+	}
+	if _, err := Connection.Exec(`CREATE UNIQUE INDEX IF NOT EXISTS go_index_access_tokens ON access_tokens(created_at, token, email);`); err != nil {
+		log.Println(err.Error())
+		return err
+	}
+	if createError := Connection.CreateTable(&models.AccessLog{}, opts); createError != nil {
+		log.Printf("Error while creating access_logs table, Reason: %v\n", createError)
+		return createError
+	}
+	// TODO
+	if _, err := Connection.Exec(`CREATE UNIQUE INDEX IF NOT EXISTS go_index_access_logs ON access_logs(token, path, method, response_time, status_code, server_hostname, created_at);`); err != nil {
+		log.Println(err.Error())
+		return err
+	}
 	log.Printf("Todo table and indexes created")
 	return nil
 }
