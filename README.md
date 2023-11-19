@@ -35,7 +35,7 @@
 - scale down to zero (Coldstart)
 - api rate limiting and security
 - ~~ API Auth and Access Logs ~~
-- access token roles
+- ~~access token roles~~
 - API Billing
 - API analytics
 

@@ -7,6 +7,7 @@ import (
 	"harshsinghvi/golang-postgres-kubernetes/controllers_old"
 	"harshsinghvi/golang-postgres-kubernetes/database"
 	"harshsinghvi/golang-postgres-kubernetes/middlewares"
+	"harshsinghvi/golang-postgres-kubernetes/models/roles"
 	"log"
 	"net/http"
 )
@@ -51,19 +52,15 @@ func main() {
 
 		v2 := api.Group("/v2")
 		{
-			v2.POST("/token", controllers.CreateNewToken)
-			v2.GET("/token/:email", controllers.GetTokens)
+			v2.POST("/token", middlewares.AuthMiddleware([]string{roles.Admin}), controllers.CreateNewToken)
+			v2.GET("/token/:email", middlewares.AuthMiddleware([]string{roles.Admin}), controllers.GetTokens)
+			v2.PUT("/token/:id", middlewares.AuthMiddleware([]string{roles.Admin}), controllers.UpdateToken)
 
-			todo := v2.Group("/todo")
-			{
-				todo.Use(middlewares.AuthMiddleware())
-				todo.GET("/", controllers.GetAllTodos)
-				todo.GET("/:id", controllers.GetSingleTodo)
-				todo.POST("/", controllers.CreateTodo)
-				todo.PUT("/:id", controllers.EditTodo)
-				todo.DELETE("/:id", controllers.DeleteTodo)
-			}
-
+			v2.GET("/todo/", middlewares.AuthMiddleware([]string{roles.Admin, roles.Read}), controllers.GetAllTodos)
+			v2.GET("/todo/:id", middlewares.AuthMiddleware([]string{roles.Admin, roles.Read, roles.ReadOne}), controllers.GetSingleTodo)
+			v2.POST("/todo/", middlewares.AuthMiddleware([]string{roles.Admin, roles.Write, roles.WriteNewOnly}), controllers.CreateTodo)
+			v2.PUT("/todo/:id", middlewares.AuthMiddleware([]string{roles.Admin, roles.Write, roles.WriteUpdateOnly}), controllers.EditTodo)
+			v2.DELETE("/todo/:id", middlewares.AuthMiddleware([]string{roles.Admin, roles.Write}), controllers.DeleteTodo)
 		}
 	}
 

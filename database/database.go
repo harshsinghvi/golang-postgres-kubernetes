@@ -4,8 +4,10 @@ import (
 	"github.com/go-pg/pg/v9"
 	orm "github.com/go-pg/pg/v9/orm"
 	"harshsinghvi/golang-postgres-kubernetes/models"
+	"harshsinghvi/golang-postgres-kubernetes/models/roles"
 	"harshsinghvi/golang-postgres-kubernetes/utils"
 	"log"
+	"time"
 )
 
 var Connection *pg.DB
@@ -83,11 +85,42 @@ func CreateTables() error {
 		log.Printf("Error while creating access_logs table, Reason: %v\n", createError)
 		return createError
 	}
-	// TODO
 	if _, err := Connection.Exec(`CREATE UNIQUE INDEX IF NOT EXISTS go_index_access_logs ON access_logs(token, path, method, response_time, status_code, server_hostname, created_at);`); err != nil {
 		log.Println(err.Error())
 		return err
 	}
 	log.Printf("Todo table and indexes created")
+
+	checkAndCreateAdminToken()
 	return nil
+}
+
+func checkAndCreateAdminToken() {
+	var accessToken models.AccessToken
+	querry := Connection.Model(&accessToken).Where("id = ?", "admin")
+	count, err := querry.Count()
+	if err != nil {
+		log.Println("Error in getting access_token count")
+	}
+	if count != 0 {
+		return
+	}
+
+	id := "admin"
+	token := utils.GenerateToken(id)
+
+	insertError := Connection.Insert(&models.AccessToken{
+		ID:        id,
+		Token:     token,
+		Email:     id,
+		Expiry:    time.Now().AddDate(99, 0, 00),
+		CreatedAt: time.Now(),
+		Roles:     []string{roles.Admin},
+	})
+
+	if insertError != nil {
+		log.Printf("Error while inserting new token into db, Reason: %v\n", insertError)
+	}
+
+	log.Printf("Admin Token created")
 }

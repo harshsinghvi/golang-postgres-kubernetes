@@ -6,7 +6,9 @@ type AccessToken struct {
 	ID        string    `json:"id"`
 	Email     string    `json:"email"`
 	Token     string    `json:"token"`
+	Roles     []string  `json:"roles"` // read, read-one, write, write-new-only, write-update-only
 	Expiry    time.Time `json:"expiry"`
+	UpdatedAt time.Time `json:"updated_at"`
 	CreatedAt time.Time `json:"created_at"`
 }
 

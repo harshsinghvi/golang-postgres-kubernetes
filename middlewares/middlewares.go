@@ -5,13 +5,14 @@ import (
 	guuid "github.com/google/uuid"
 	"harshsinghvi/golang-postgres-kubernetes/database"
 	"harshsinghvi/golang-postgres-kubernetes/models"
+	"harshsinghvi/golang-postgres-kubernetes/models/roles"
 	"harshsinghvi/golang-postgres-kubernetes/utils"
 	"log"
 	"os"
 	"time"
 )
 
-func AuthMiddleware() gin.HandlerFunc {
+func AuthMiddleware(requiredRoles []string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		reqStart := time.Now()
 		var accessToken models.AccessToken
@@ -46,7 +47,8 @@ func AuthMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		if time.Until(accessToken.Expiry).Seconds() <= 0 {
+		if time.Until(accessToken.Expiry).Seconds() <= 0 ||
+			!roles.CheckRoles(requiredRoles, accessToken.Roles) {
 			utils.UnauthorizedResponse(c)
 			return
 		}
@@ -57,6 +59,7 @@ func AuthMiddleware() gin.HandlerFunc {
 		if hostname, err = os.Hostname(); err != nil {
 			log.Printf("Error loading system hostname %v\n", err)
 		}
+
 		insertError := database.Connection.Insert(&models.AccessLog{
 			ID:             reqId,
 			Token:          accessToken.Token,
