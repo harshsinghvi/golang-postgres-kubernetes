@@ -34,8 +34,6 @@ func main() {
 	database.Connect()
 	database.CreateTables()
 
-	// router := gin.Default()
-	// TODO: for improved server fault tollerent but dosent log requests
 	router := gin.New()
 	router.Use(gin.Logger())
 	router.Use(gin.Recovery())
@@ -52,33 +50,37 @@ func main() {
 
 		v2 := api.Group("/v2")
 		{
+			// Public endpoint
 			v2.POST("/user", controllers.CreateNewUser)
 
-			// Users Endpoints
-			v2.GET("/user", middlewares.AuthMiddleware([]string{roles.Any}), controllers.GetUserID)
-			v2.POST("/user/token", middlewares.AuthMiddleware([]string{roles.Write}), controllers.CreateNewToken)
-			v2.GET("/user/token", middlewares.AuthMiddleware([]string{roles.Read}), controllers.GetTokens)
-			v2.PUT("/user/token/:token-id", middlewares.AuthMiddleware([]string{roles.Write}), controllers.UpdateToken)
-			v2.POST("/user/bill", middlewares.AuthMiddleware([]string{roles.Any}), controllers.CreateBill)
-			v2.GET("/user/bill", middlewares.AuthMiddleware([]string{roles.Any}), controllers.GetBills)
-
 			// Admin Endpoints
-			v2.POST("/user/:id/token", middlewares.AuthMiddleware([]string{roles.Admin}), controllers.CreateNewToken)
-			v2.GET("/user/:id/token", middlewares.AuthMiddleware([]string{roles.Admin}), controllers.GetTokens)
-			v2.PUT("/user/:user-id/token/:token-id", middlewares.AuthMiddleware([]string{roles.Admin}), controllers.UpdateToken)
-			v2.POST("/user/:id/bill", middlewares.AuthMiddleware([]string{roles.Admin}), controllers.CreateBill)
-			v2.GET("/user/:id/bill", middlewares.AuthMiddleware([]string{roles.Admin}), controllers.GetBills)
+			v2.POST("/user/:id/token", middlewares.AIO(roles.Roles{}), controllers.CreateNewToken)
+			v2.GET("/user/:id/token", middlewares.AIO(roles.Roles{}), controllers.GetTokens)
+			v2.PUT("/user/:user-id/token/:token-id", middlewares.AIO(roles.Roles{}), controllers.UpdateToken)
+			v2.POST("/user/:id/bill", middlewares.AIO(roles.Roles{}, middlewares.Config{"billing-disable": true}), controllers.CreateBill)
+			v2.GET("/user/:id/bill", middlewares.AIO(roles.Roles{}, middlewares.Config{"billing-disable": true}), controllers.GetBills)
+			v2.DELETE("/user/:user-id", middlewares.AIO(roles.Roles{}), controllers.DeleteUser)
+			v2.DELETE("/user/:user-id/token/:token-id", middlewares.AIO(roles.Roles{}), controllers.DeleteTokens)
+
+			// Users Endpoints
+			v2.GET("/user", middlewares.AIO(roles.Roles{roles.Any}), controllers.GetUserID)
+			v2.POST("/user/token", middlewares.AIO(roles.Roles{roles.Write}), controllers.CreateNewToken)
+			v2.GET("/user/token", middlewares.AIO(roles.Roles{roles.Read}), controllers.GetTokens)
+			v2.PUT("/user/token/:token-id", middlewares.AIO(roles.Roles{roles.Write}), controllers.UpdateToken)
+			v2.POST("/user/bill", middlewares.AIO(roles.Roles{roles.Any}, middlewares.Config{"billing-disable": true}), controllers.CreateBill)
+			v2.GET("/user/bill", middlewares.AIO(roles.Roles{roles.Any}, middlewares.Config{"billing-disable": true}), controllers.GetBills)
+			v2.DELETE("/user/token/:token-id", middlewares.AIO(roles.Roles{roles.Write}), controllers.DeleteTokens)
 
 			// TODO Soft delete
 			// Delete Token
 			// delete user
 
 			// Business Logic
-			v2.GET("/todo/", middlewares.AuthMiddleware([]string{roles.Admin, roles.Read}), controllers.GetAllTodos)
-			v2.GET("/todo/:id", middlewares.AuthMiddleware([]string{roles.Admin, roles.Read, roles.ReadOne}), controllers.GetSingleTodo)
-			v2.POST("/todo/", middlewares.AuthMiddleware([]string{roles.Admin, roles.Write, roles.WriteNewOnly}), controllers.CreateTodo)
-			v2.PUT("/todo/:id", middlewares.AuthMiddleware([]string{roles.Admin, roles.Write, roles.WriteUpdateOnly}), controllers.EditTodo)
-			v2.DELETE("/todo/:id", middlewares.AuthMiddleware([]string{roles.Admin, roles.Write}), controllers.DeleteTodo)
+			v2.GET("/todo/", middlewares.AIO(roles.Roles{roles.Admin, roles.Read}), controllers.GetAllTodos)
+			v2.GET("/todo/:id", middlewares.AIO(roles.Roles{roles.Admin, roles.Read, roles.ReadOne}), controllers.GetSingleTodo)
+			v2.POST("/todo/", middlewares.AIO(roles.Roles{roles.Admin, roles.Write, roles.WriteNewOnly}), controllers.CreateTodo)
+			v2.PUT("/todo/:id", middlewares.AIO(roles.Roles{roles.Admin, roles.Write, roles.WriteUpdateOnly}), controllers.EditTodo)
+			v2.DELETE("/todo/:id", middlewares.AIO(roles.Roles{roles.Admin, roles.Write}), controllers.DeleteTodo)
 		}
 	}
 

@@ -2,6 +2,8 @@ package controllers
 
 import (
 	"fmt"
+	"github.com/gin-gonic/gin"
+	guuid "github.com/google/uuid"
 	"harshsinghvi/golang-postgres-kubernetes/database"
 	"harshsinghvi/golang-postgres-kubernetes/models"
 	"harshsinghvi/golang-postgres-kubernetes/models/roles"
@@ -9,9 +11,6 @@ import (
 	"log"
 	"net/http"
 	"time"
-
-	"github.com/gin-gonic/gin"
-	guuid "github.com/google/uuid"
 )
 
 func GetAllTodos(c *gin.Context) {
@@ -387,20 +386,6 @@ func CreateBill(c *gin.Context) {
 		return
 	}
 
-	var bill = models.Bill{
-		ID:        guuid.New().String(),
-		APIUsage:  0,
-		BillValue: 0,
-		Sattled:   false,
-		UserID:    userId,
-		CreatedAt: time.Now(),
-	}
-
-	if insertError := database.Connection.Insert(&bill); insertError != nil {
-		utils.InternalServerError(c, "Error inserting bill, Reason:", insertError)
-		return
-	}
-
 	var accessTokens []models.AccessToken
 
 	if err = database.Connection.Model(&accessTokens).Where("user_id = ?", userId).Select(); err != nil {
@@ -414,25 +399,61 @@ func CreateBill(c *gin.Context) {
 	}
 
 	var accessLogs []models.AccessLog
-
-	var tokensStr string
-
+	var tokensIdStr string
 	for index, accessToken := range accessTokens {
 		if index == 0 {
-			tokensStr = fmt.Sprintf("'%s'", accessToken.Token)
+			tokensIdStr = fmt.Sprintf("'%s'", accessToken.ID)
 		}
-		tokensStr = fmt.Sprintf("%s,'%s'", tokensStr, accessToken.Token)
+		tokensIdStr = fmt.Sprintf("%s,'%s'", tokensIdStr, accessToken.ID)
 	}
 
-	querry := database.Connection.Model(&accessLogs)
-	querry = querry.Set("bill_id = ?", bill.ID)
-	querry = querry.Set("billed = true")
+	usageQuerry := database.Connection.Model(&accessLogs)
+	usageQuerry = usageQuerry.Where(fmt.Sprintf("token_id in (%s)", tokensIdStr))
+	usageQuerry = usageQuerry.Where("status_code between 100 and 499")
+	usageQuerry = usageQuerry.Where("billed = false")
 
-	querry = querry.Where(fmt.Sprintf("token in (%s)", tokensStr))
-	querry = querry.Where("status_code between 100 and 499")
-	querry = querry.Where("billed = false")
+	count, err = usageQuerry.Count()
 
-	res, updateErr := querry.Update()
+	if err != nil {
+		utils.InternalServerError(c, "Error counting users for bill, Reason:", err)
+		return
+	}
+	if count == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status":  http.StatusBadRequest,
+			"message": "No Usage for Bill",
+		})
+		c.Abort()
+		return
+	}
+
+	var bill models.Bill
+	billQuerry := database.Connection.Model(&bill).Where("user_id = ?", userId)
+	billQuerry = billQuerry.Where("sattled = false")
+	billQuerry = billQuerry.Order("created_at DESC")
+	billQuerry = billQuerry.Limit(1)
+	billQuerry.Select()
+
+	if bill.ID == "" {
+		bill = models.Bill{
+			ID:        guuid.New().String(),
+			APIUsage:  0,
+			BillValue: 0,
+			Sattled:   false,
+			UserID:    userId,
+			CreatedAt: time.Now(),
+		}
+
+		if insertError := database.Connection.Insert(&bill); insertError != nil {
+			utils.InternalServerError(c, "Error inserting bill, Reason:", insertError)
+			return
+		}
+	}
+
+	usageQuerry = usageQuerry.Set("bill_id = ?", bill.ID)
+	usageQuerry = usageQuerry.Set("billed = true")
+	usageQuerry = usageQuerry.Set("updated_at = ?", time.Now())
+	res, updateErr := usageQuerry.Update()
 
 	if updateErr != nil {
 		log.Printf("Error While fetching access logs %s", updateErr)
@@ -444,14 +465,10 @@ func CreateBill(c *gin.Context) {
 		return
 	}
 
-	// if res.RowsAffected() == 0 {
-	// TODO: Delete bill and return error
-	// }
-
-	bill.CalculateBillValue(res.RowsAffected())
-
-	querry = database.Connection.Model(&bill).WherePK()
-	res, updateErr = querry.Update()
+	bill.CalculateBillValue(res.RowsAffected() + bill.APIUsage)
+	bill.UpdatedAt = time.Now()
+	updateBillquerry := database.Connection.Model(&bill).WherePK()
+	res, updateErr = updateBillquerry.Update()
 
 	if updateErr != nil || res.RowsAffected() == 0 {
 		log.Printf("Error While updating bill %s", err)
@@ -499,9 +516,93 @@ func GetBills(c *gin.Context) {
 		}
 	}
 	c.JSON(http.StatusOK, gin.H{
+		"status":    http.StatusOK,
+		"message":   "All Bills",
+		"data":      bills,
+		"dueAmount": total,
+	})
+}
+
+func DeleteTokens(c *gin.Context) {
+	var userId string
+	tokenId := c.Param("token-id")
+	userId = c.Param("user-id")
+
+	if userId == "" {
+		userIdFromToken, _ := c.Get("user_id")
+		userId = userIdFromToken.(string)
+	}
+
+	var accessToken []models.AccessToken
+	querry := database.Connection.Model(&accessToken)
+
+	if userId != "admin" {
+		querry = querry.Where("user_id = ?", userId)
+	}
+
+	querry = querry.Where("id = ?", tokenId)
+	querry = querry.Where("deleted = ?", false)
+	querry = querry.Set("deleted = ?", true)
+	querry = querry.Set("updated_at = ?", time.Now())
+
+	res, err := querry.Update()
+	if err != nil {
+		utils.InternalServerError(c, "error deleting token", err)
+	}
+	if res.RowsAffected() == 0 {
+		c.JSON(http.StatusNotFound, gin.H{
+			"status":  http.StatusNotFound,
+			"message": "token not found",
+		})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
 		"status":  http.StatusOK,
-		"message": "All Bills",
-		"data":    bills,
-		"total":   total,
+		"message": "token deleted",
+	})
+}
+
+func DeleteUser(c *gin.Context) {
+	userId := c.Param("user-id")
+
+	querry := database.Connection.Model(&models.User{})
+	querry = querry.Where("id = ?", userId)
+	querry = querry.Where("deleted = ?", false)
+	querry = querry.Set("deleted = ?", true)
+	querry = querry.Set("updated_at = ?", time.Now())
+
+	res, err := querry.Update()
+	if err != nil {
+		utils.InternalServerError(c, "error deleting user", err)
+		return
+	}
+
+	if res.RowsAffected() == 0 {
+		c.JSON(http.StatusNotFound, gin.H{
+			"status":  http.StatusNotFound,
+			"message": "user not found",
+		})
+		return
+	}
+
+	querry = database.Connection.Model(&models.AccessToken{})
+	querry = querry.Where("user_id = ?", userId)
+	querry = querry.Where("deleted = ?", false)
+	querry = querry.Set("deleted = ?", true)
+	querry = querry.Set("updated_at = ?", time.Now())
+
+	res, err = querry.Update()
+	if err != nil {
+		utils.InternalServerError(c, "error deleting user", err)
+		return
+	}
+	count := res.RowsAffected()
+	if count == 0 {
+		log.Printf("error while deleting tokens of user %s", userId)
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"status":        http.StatusOK,
+		"message":       "user and its token deleted",
+		"tokensDeleted": count,
 	})
 }

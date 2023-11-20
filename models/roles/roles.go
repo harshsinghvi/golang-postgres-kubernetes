@@ -1,5 +1,7 @@
 package roles
 
+type Roles []string
+
 const (
 	Any             = "any"
 	Admin           = "admin"
@@ -11,14 +13,12 @@ const (
 )
 
 func CheckRoles(requiredRoles []string, grantedRoles []string) bool {
-	for _, requiredRole := range requiredRoles {
-
-		if requiredRole == Any && len(grantedRoles) != 0 {
+	for _, grantedRole := range grantedRoles {
+		if grantedRole == Admin {
 			return true
 		}
-
-		for _, grantedRole := range grantedRoles {
-			if grantedRole == Admin {
+		for _, requiredRole := range requiredRoles {
+			if requiredRole == Any && len(grantedRoles) != 0 {
 				return true
 			}
 			if grantedRole == requiredRole {

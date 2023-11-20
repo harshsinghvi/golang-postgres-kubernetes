@@ -11,11 +11,12 @@ type AccessToken struct {
 	UserID    string    `json:"user_id"`
 	UpdatedAt time.Time `json:"updated_at"`
 	CreatedAt time.Time `json:"created_at"`
+	Deleted   bool      `json:"deleted" pg:",use_zero"`
 }
 
 type AccessLog struct {
 	ID             string    `json:"id"`
-	Token          string    `json:"token"` // TODO: Change this to TokenID
+	TokenID        string    `json:"token_id"` // TODO: Change this to TokenID
 	Path           string    `json:"path"`
 	ClientIP       string    `json:"client_ip"`
 	Method         string    `json:"method"`
@@ -26,5 +27,6 @@ type AccessLog struct {
 	BillID         string    `json:"bill_id"`
 	Billed         bool      `json:"billed" pg:",use_zero"`
 	CreatedAt      time.Time `json:"created_at"`
-	// UpdatedAt      time.Time `json:"updated_at"` // TODO: Latter
+	UpdatedAt      time.Time `json:"updated_at"`
+	Deleted        bool      `json:"deleted" pg:",use_zero"`
 }
