@@ -14,6 +14,8 @@ import (
 )
 
 func GetAllTodos(c *gin.Context) {
+	userId, _ := c.Get("user_id")
+
 	var pag models.Pagination
 	var err error
 
@@ -22,7 +24,7 @@ func GetAllTodos(c *gin.Context) {
 	var pageString = c.Query("page")
 	pag.ParseString(pageString)
 
-	querry := database.Connection.Model(&todos).Order("created_at DESC").Where("deleted = ?", false)
+	querry := database.Connection.Model(&todos).Order("created_at DESC").Where("deleted = ?", false).Where("user_id = ?", userId)
 
 	if searchString != "" {
 		querry = querry.Where(fmt.Sprintf("text like '%%%s%%'", searchString))
@@ -51,9 +53,10 @@ func GetAllTodos(c *gin.Context) {
 }
 
 func GetSingleTodo(c *gin.Context) {
+	userId, _ := c.Get("user_id")
 	todoId := c.Param("id")
 	var todos []models.Todo
-	querry := database.Connection.Model(&todos).Where("id = ?", todoId).Where("deleted = ?", false)
+	querry := database.Connection.Model(&todos).Where("id = ?", todoId).Where("deleted = ?", false).Where("user_id = ?", userId)
 	if count, _ := querry.Count(); count == 1 {
 		if err := querry.Select(); err != nil {
 			utils.InternalServerError(c, "Error while getting a single todo, Reason:", err)
@@ -74,6 +77,7 @@ func GetSingleTodo(c *gin.Context) {
 }
 
 func CreateTodo(c *gin.Context) {
+	userId, _ := c.Get("user_id")
 	var todo models.Todo
 	c.BindJSON(&todo)
 
@@ -84,6 +88,7 @@ func CreateTodo(c *gin.Context) {
 		ID:        id,
 		Text:      text,
 		Completed: false,
+		UserID:    userId.(string),
 		Deleted:   false,
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
@@ -103,11 +108,12 @@ func CreateTodo(c *gin.Context) {
 }
 
 func EditTodo(c *gin.Context) {
+	userId, _ := c.Get("user_id")
 	todoId := c.Param("id")
 	var todo models.Todo
 	c.BindJSON(&todo)
 
-	querry := database.Connection.Model(&models.Todo{}).Set("completed = ?", todo.Completed).Set("updated_at = ?", time.Now()).Where("deleted = ?", false)
+	querry := database.Connection.Model(&models.Todo{}).Set("completed = ?", todo.Completed).Set("updated_at = ?", time.Now()).Where("deleted = ?", false).Where("user_id = ?", userId)
 	if todo.Text != "" {
 		querry = querry.Set("text = ?", todo.Text)
 	}
@@ -134,9 +140,12 @@ func EditTodo(c *gin.Context) {
 
 func DeleteTodo(c *gin.Context) {
 	todoId := c.Param("id")
-	
+	userId, _ := c.Get("user_id")
+
 	querry := database.Connection.Model(&models.Todo{})
+
 	querry = querry.Where("id = ?", todoId)
+	querry = querry.Where("user_id = ?", userId)
 	querry = querry.Where("deleted = ?", false)
 	querry = querry.Set("deleted = ?", true)
 	querry = querry.Set("updated_at = ?", time.Now())
