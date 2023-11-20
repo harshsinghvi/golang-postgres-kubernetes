@@ -60,7 +60,7 @@ func main() {
 			v2.POST("/user/:id/bill", middlewares.AIO(roles.Roles{}, middlewares.Config{"billing-disable": true}), controllers.CreateBill)
 			v2.GET("/user/:id/bill", middlewares.AIO(roles.Roles{}, middlewares.Config{"billing-disable": true}), controllers.GetBills)
 			v2.DELETE("/user/:user-id", middlewares.AIO(roles.Roles{}), controllers.DeleteUser)
-			v2.DELETE("/user/:user-id/token/:token-id", middlewares.AIO(roles.Roles{}), controllers.DeleteTokens)
+			v2.DELETE("/user/:user-id/token/:token-id", middlewares.AIO(roles.Roles{}), controllers.DeleteToken)
 
 			// Users Endpoints
 			v2.GET("/user", middlewares.AIO(roles.Roles{roles.Any}), controllers.GetUserID)
@@ -69,7 +69,7 @@ func main() {
 			v2.PUT("/user/token/:token-id", middlewares.AIO(roles.Roles{roles.Write}), controllers.UpdateToken)
 			v2.POST("/user/bill", middlewares.AIO(roles.Roles{roles.Any}, middlewares.Config{"billing-disable": true}), controllers.CreateBill)
 			v2.GET("/user/bill", middlewares.AIO(roles.Roles{roles.Any}, middlewares.Config{"billing-disable": true}), controllers.GetBills)
-			v2.DELETE("/user/token/:token-id", middlewares.AIO(roles.Roles{roles.Write}), controllers.DeleteTokens)
+			v2.DELETE("/user/token/:token-id", middlewares.AIO(roles.Roles{roles.Write}), controllers.DeleteToken)
 
 			// TODO Soft delete
 			// Delete Token

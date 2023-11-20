@@ -22,7 +22,7 @@ func GetAllTodos(c *gin.Context) {
 	var pageString = c.Query("page")
 	pag.ParseString(pageString)
 
-	querry := database.Connection.Model(&todos).Order("created_at DESC")
+	querry := database.Connection.Model(&todos).Order("created_at DESC").Where("deleted = ?", false)
 
 	if searchString != "" {
 		querry = querry.Where(fmt.Sprintf("text like '%%%s%%'", searchString))
@@ -53,7 +53,7 @@ func GetAllTodos(c *gin.Context) {
 func GetSingleTodo(c *gin.Context) {
 	todoId := c.Param("id")
 	var todos []models.Todo
-	querry := database.Connection.Model(&todos).Where("id = ?", todoId)
+	querry := database.Connection.Model(&todos).Where("id = ?", todoId).Where("deleted = ?", false)
 	if count, _ := querry.Count(); count == 1 {
 		if err := querry.Select(); err != nil {
 			utils.InternalServerError(c, "Error while getting a single todo, Reason:", err)
@@ -84,6 +84,7 @@ func CreateTodo(c *gin.Context) {
 		ID:        id,
 		Text:      text,
 		Completed: false,
+		Deleted:   false,
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
 	}
@@ -106,7 +107,7 @@ func EditTodo(c *gin.Context) {
 	var todo models.Todo
 	c.BindJSON(&todo)
 
-	querry := database.Connection.Model(&models.Todo{}).Set("completed = ?", todo.Completed).Set("updated_at = ?", time.Now())
+	querry := database.Connection.Model(&models.Todo{}).Set("completed = ?", todo.Completed).Set("updated_at = ?", time.Now()).Where("deleted = ?", false)
 	if todo.Text != "" {
 		querry = querry.Set("text = ?", todo.Text)
 	}
@@ -133,11 +134,25 @@ func EditTodo(c *gin.Context) {
 
 func DeleteTodo(c *gin.Context) {
 	todoId := c.Param("id")
-	todo := &models.Todo{ID: todoId}
-	if err := database.Connection.Delete(todo); err != nil {
-		utils.InternalServerError(c, "Error while deleting a single todo, Reason:", err)
+	
+	querry := database.Connection.Model(&models.Todo{})
+	querry = querry.Where("id = ?", todoId)
+	querry = querry.Where("deleted = ?", false)
+	querry = querry.Set("deleted = ?", true)
+	querry = querry.Set("updated_at = ?", time.Now())
+
+	res, err := querry.Update()
+	if err != nil {
+		utils.InternalServerError(c, "error deleting todo", err)
+	}
+	if res.RowsAffected() == 0 {
+		c.JSON(http.StatusNotFound, gin.H{
+			"status":  http.StatusNotFound,
+			"message": "todo not found",
+		})
 		return
 	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"status":  http.StatusOK,
 		"message": "Todo deleted successfully",
@@ -153,14 +168,14 @@ func CreateNewToken(c *gin.Context) {
 		userId = userIdFromToken.(string)
 	}
 
-	if userId != "admin" {
-		if count, _ := database.Connection.Model(&models.User{}).Where("id = ?", userId).Count(); count == 0 {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"status":  http.StatusBadRequest,
-				"message": "user_id, not found",
-			})
-			return
-		}
+	querry := database.Connection.Model(&models.User{}).Where("id = ?", userId).Where("deleted = ?", false)
+
+	if count, _ := querry.Count(); count == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status":  http.StatusBadRequest,
+			"message": "user_id, not found",
+		})
+		return
 	}
 
 	id := guuid.New().String()
@@ -197,13 +212,23 @@ func GetTokens(c *gin.Context) {
 		userId = userIdFromToken.(string)
 	}
 
+	querry := database.Connection.Model(&models.User{}).Where("id = ?", userId).Where("deleted = ?", false)
+
+	if count, _ := querry.Count(); count == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status":  http.StatusBadRequest,
+			"message": "user_id, not found",
+		})
+		return
+	}
+
 	var pag models.Pagination
 	var err error
 	var accessTokens []models.AccessToken
 	var pageString = c.Query("page")
 	pag.ParseString(pageString)
 
-	querry := database.Connection.Model(&accessTokens).Order("created_at DESC")
+	querry = database.Connection.Model(&accessTokens).Order("created_at DESC").Where("deleted = ?", false)
 
 	if userId != "admin" {
 		querry = querry.Where("user_id = ?", userId)
@@ -231,14 +256,23 @@ func GetTokens(c *gin.Context) {
 }
 
 func UpdateToken(c *gin.Context) {
-
 	var userId string
 	tokenId := c.Param("token-id")
-	userId = c.Param("id")
+	userId = c.Param("user-id")
 
 	if userId == "" {
 		userIdFromToken, _ := c.Get("user_id")
 		userId = userIdFromToken.(string)
+	}
+
+	querry := database.Connection.Model(&models.User{}).Where("id = ?", userId).Where("deleted = ?", false)
+
+	if count, _ := querry.Count(); count == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status":  http.StatusBadRequest,
+			"message": "user_id, not found",
+		})
+		return
 	}
 
 	var accessToken models.AccessToken
@@ -252,7 +286,7 @@ func UpdateToken(c *gin.Context) {
 		})
 	}
 
-	if c.Param("id") == "" {
+	if c.Param("user-id") == "" {
 		for _, role := range accessToken.Roles {
 			if role == roles.Admin {
 				c.JSON(http.StatusUnauthorized, gin.H{
@@ -264,8 +298,10 @@ func UpdateToken(c *gin.Context) {
 		}
 	}
 
-	querry := database.Connection.Model(&models.AccessToken{}).Set("roles = ?", accessToken.Roles).Set("updated_at = ?", time.Now())
+	querry = database.Connection.Model(&models.AccessToken{}).Set("roles = ?", accessToken.Roles)
 	querry = querry.Where("id = ?", tokenId)
+	querry = querry.Where("deleted = ?", false)
+	querry = querry.Set("updated_at = ?", time.Now())
 
 	if userId != "admin" {
 		querry = querry.Where("user_id = ?", userId)
@@ -352,6 +388,16 @@ func CreateNewUser(c *gin.Context) {
 func GetUserID(c *gin.Context) {
 	userId, _ := c.Get("user_id")
 	var accessTokens []models.AccessToken
+	querry := database.Connection.Model(&models.User{}).Where("id = ?", userId).Where("deleted = ?", false)
+
+	if count, _ := querry.Count(); count == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status":  http.StatusBadRequest,
+			"message": "user_id, not found",
+		})
+		return
+	}
+
 	database.Connection.Model(&accessTokens).Where("user_id = ?", userId.(string)).Order("created_at DESC").Select()
 
 	c.JSON(http.StatusOK, gin.H{
@@ -523,7 +569,7 @@ func GetBills(c *gin.Context) {
 	})
 }
 
-func DeleteTokens(c *gin.Context) {
+func DeleteToken(c *gin.Context) {
 	var userId string
 	tokenId := c.Param("token-id")
 	userId = c.Param("user-id")
