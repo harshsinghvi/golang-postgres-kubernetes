@@ -12,6 +12,7 @@ func InternalServerError(c *gin.Context, msg string, err error) {
 		"status":  http.StatusInternalServerError,
 		"message": "Something went wrong",
 	})
+	c.Abort()
 }
 
 func UnauthorizedResponse(c *gin.Context) {

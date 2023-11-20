@@ -1,8 +1,10 @@
 package database
 
 import (
+	"fmt"
 	"github.com/go-pg/pg/v9"
 	orm "github.com/go-pg/pg/v9/orm"
+	guuid "github.com/google/uuid"
 	"harshsinghvi/golang-postgres-kubernetes/models"
 	"harshsinghvi/golang-postgres-kubernetes/models/roles"
 	"harshsinghvi/golang-postgres-kubernetes/utils"
@@ -60,39 +62,37 @@ func Connect() *pg.DB {
 
 	return Connection
 }
-
-func CreateTables() error {
+func createTablesAndIndexes(tableName string, model interface{}, indexFields string) error {
 	opts := &orm.CreateTableOptions{
 		IfNotExists: true,
 	}
-	if createError := Connection.CreateTable(&models.Todo{}, opts); createError != nil {
-		log.Printf("Error while creating todo table, Reason: %v\n", createError)
-		return createError
-	}
-	if _, err := Connection.Exec(`CREATE UNIQUE INDEX IF NOT EXISTS go_index_todos ON todos(completed, created_at);`); err != nil {
-		log.Println(err.Error())
-		return err
-	}
-	if createError := Connection.CreateTable(&models.AccessToken{}, opts); createError != nil {
-		log.Printf("Error while creating access_tokens table, Reason: %v\n", createError)
-		return createError
-	}
-	if _, err := Connection.Exec(`CREATE UNIQUE INDEX IF NOT EXISTS go_index_access_tokens ON access_tokens(created_at, token, email);`); err != nil {
-		log.Println(err.Error())
-		return err
-	}
-	if createError := Connection.CreateTable(&models.AccessLog{}, opts); createError != nil {
-		log.Printf("Error while creating access_logs table, Reason: %v\n", createError)
-		return createError
-	}
-	if _, err := Connection.Exec(`CREATE UNIQUE INDEX IF NOT EXISTS go_index_access_logs ON access_logs(token, path, method, response_time, status_code, server_hostname, created_at);`); err != nil {
-		log.Println(err.Error())
-		return err
-	}
-	log.Printf("Todo table and indexes created")
 
-	checkAndCreateAdminToken()
+	createIndexQuerry := fmt.Sprintf("CREATE UNIQUE INDEX IF NOT EXISTS go_index_%s ON %s(%s);", tableName, tableName, indexFields)
+
+	if createError := Connection.CreateTable(model, opts); createError != nil {
+		log.Printf("Error while creating %s table, Reason: %v\n", tableName, createError)
+		return createError
+	}
+
+	if _, err := Connection.Exec(createIndexQuerry); err != nil {
+		log.Printf("Error while index of %s table, Reason: %v\n", tableName, err)
+		return err
+	}
+
+	log.Printf("INFO: %s table and its indexes created", tableName)
 	return nil
+}
+
+func CreateTables() {
+	createTablesAndIndexes("todos", &models.Todo{}, "completed, created_at")
+	createTablesAndIndexes("access_tokens", &models.AccessToken{}, "created_at, token, expiry, user_id")
+	// TODO: fails
+	createTablesAndIndexes("access_logs", &models.AccessLog{}, "token, path, method, response_time, status_code, server_hostname, created_at, bill_id, billed")
+	createTablesAndIndexes("users", &models.User{}, "email, created_at")
+	createTablesAndIndexes("bills", &models.Bill{}, "sattled, user_id, created_at")
+	checkAndCreateAdminUser()
+	checkAndCreateAdminToken()
+	log.Printf("all tables and indexes created")
 }
 
 func checkAndCreateAdminToken() {
@@ -107,12 +107,12 @@ func checkAndCreateAdminToken() {
 	}
 
 	id := "admin"
-	token := utils.GenerateToken(id)
+	token := utils.GenerateToken(guuid.New().String())
 
 	insertError := Connection.Insert(&models.AccessToken{
 		ID:        id,
 		Token:     token,
-		Email:     id,
+		UserID:    id,
 		Expiry:    time.Now().AddDate(99, 0, 00),
 		CreatedAt: time.Now(),
 		Roles:     []string{roles.Admin},
@@ -123,4 +123,30 @@ func checkAndCreateAdminToken() {
 	}
 
 	log.Printf("Admin Token created")
+}
+
+func checkAndCreateAdminUser() {
+	var user models.User
+	querry := Connection.Model(&user).Where("id = ?", "admin")
+	count, err := querry.Count()
+	if err != nil {
+		log.Println("Error in getting users count")
+	}
+	if count != 0 {
+		return
+	}
+
+	id := "admin"
+
+	insertError := Connection.Insert(&models.User{
+		ID:        id,
+		Email:     id,
+		CreatedAt: time.Now(),
+	})
+
+	if insertError != nil {
+		log.Printf("Error while inserting new user into db, Reason: %v\n", insertError)
+	}
+
+	log.Printf("Admin user created")
 }

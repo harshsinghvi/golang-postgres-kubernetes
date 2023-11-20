@@ -52,10 +52,28 @@ func main() {
 
 		v2 := api.Group("/v2")
 		{
-			v2.POST("/token", middlewares.AuthMiddleware([]string{roles.Admin}), controllers.CreateNewToken)
-			v2.GET("/token/:email", middlewares.AuthMiddleware([]string{roles.Admin}), controllers.GetTokens)
-			v2.PUT("/token/:id", middlewares.AuthMiddleware([]string{roles.Admin}), controllers.UpdateToken)
+			v2.POST("/user", controllers.CreateNewUser)
 
+			// Users Endpoints
+			v2.GET("/user", middlewares.AuthMiddleware([]string{roles.Any}), controllers.GetUserID)
+			v2.POST("/user/token", middlewares.AuthMiddleware([]string{roles.Write}), controllers.CreateNewToken)
+			v2.GET("/user/token", middlewares.AuthMiddleware([]string{roles.Read}), controllers.GetTokens)
+			v2.PUT("/user/token/:token-id", middlewares.AuthMiddleware([]string{roles.Write}), controllers.UpdateToken)
+			v2.POST("/user/bill", middlewares.AuthMiddleware([]string{roles.Any}), controllers.CreateBill)
+			v2.GET("/user/bill", middlewares.AuthMiddleware([]string{roles.Any}), controllers.GetBills)
+
+			// Admin Endpoints
+			v2.POST("/user/:id/token", middlewares.AuthMiddleware([]string{roles.Admin}), controllers.CreateNewToken)
+			v2.GET("/user/:id/token", middlewares.AuthMiddleware([]string{roles.Admin}), controllers.GetTokens)
+			v2.PUT("/user/:user-id/token/:token-id", middlewares.AuthMiddleware([]string{roles.Admin}), controllers.UpdateToken)
+			v2.POST("/user/:id/bill", middlewares.AuthMiddleware([]string{roles.Admin}), controllers.CreateBill)
+			v2.GET("/user/:id/bill", middlewares.AuthMiddleware([]string{roles.Admin}), controllers.GetBills)
+
+			// TODO Soft delete
+			// Delete Token
+			// delete user
+
+			// Business Logic
 			v2.GET("/todo/", middlewares.AuthMiddleware([]string{roles.Admin, roles.Read}), controllers.GetAllTodos)
 			v2.GET("/todo/:id", middlewares.AuthMiddleware([]string{roles.Admin, roles.Read, roles.ReadOne}), controllers.GetSingleTodo)
 			v2.POST("/todo/", middlewares.AuthMiddleware([]string{roles.Admin, roles.Write, roles.WriteNewOnly}), controllers.CreateTodo)
