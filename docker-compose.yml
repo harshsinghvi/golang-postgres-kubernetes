@@ -1,24 +1,24 @@
 version: '3'
 services:
-  # app:
-  #   container_name: go-todo-api
-  #   build: .
-  #   ports: 
-  #     - 8080:8080 
-  #   restart: on-failure
-  #   depends_on:
-  #     - postgres
-  #   networks:
-  #     - fullstack
-  #   environment:
-  #     - DB_HOST=postgres
-  #     - DB_DRIVER=${DB_DRIVER}
-  #     - DB_USER=${DB_USER}
-  #     - DB_PASSWORD=${DB_PASSWORD}
-  #     - DB_NAME=${DB_NAME}
-  #     - DB_PORT=${DB_PORT}
-  #     - POSTGRES_URL=${POSTGRES_URL}
-      # - PORT=${PORT} 
+  app:
+    container_name: go-todo-api
+    build: .
+    ports: 
+      - 8080:8080 
+    restart: on-failure
+    depends_on:
+      - postgres
+    networks:
+      - fullstack
+    environment:
+      - DB_HOST=postgres
+      - DB_DRIVER=${DB_DRIVER}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_NAME=${DB_NAME}
+      - DB_PORT=${DB_PORT}
+      - POSTGRES_URL=${POSTGRES_URL}
+      - PORT=${PORT} 
 
   postgres:
     image: postgres:latest
@@ -32,8 +32,8 @@ services:
       - 5432:5432
     volumes:
       - ./docker-compose/postgres:/var/lib/postgresql/data
-    # networks:
-    #   - fullstack
+    networks:
+      - fullstack
   pgadmin:
     image: dpage/pgadmin4
     container_name: pgadmin4
@@ -45,6 +45,8 @@ services:
       PGADMIN_DEFAULT_PASSWORD: strong-password
     volumes:
       - ./docker-compose/pgadmin-data:/var/lib/pgadmin
+    networks:
+      - fullstack
 
 # Networks to be created to facilitate communication between containers
 networks:

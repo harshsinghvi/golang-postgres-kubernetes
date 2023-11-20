@@ -13,6 +13,18 @@
 - repo and container registry - github and GHCR
 - API Testing Tools - Apache Benchmark, Postman
 
+## API Features
+
+> postman public collection <https://documenter.getpostman.com/view/12907432/2s9Ye8hw1H> WIP: Documentation
+
+- Todo Api (Multi User)
+- Api Billing (as per api hits and responses excluding status code 5xx )
+- soft delete
+- api authentication
+    1. roles based auth
+    1. user based auth
+    1. inter user access restricted
+
 ## K8S Setup procedure
 
 1. eksctl faragete cluster `eksctl create cluster --name cluster --region ap-south-1 --fargate`
@@ -32,12 +44,12 @@
 - ~~ Connect external postgress to it ~~
 - ~~ deploy postgress to Kubernetes ~~
 - ~~ autoscale postgress deployment ~~
-- scale down to zero (Coldstart)
-- api rate limiting and security
 - ~~ API Auth and Access Logs ~~
 - ~~access token roles~~
-- API Billing
+- ~~API Billing~~
+- scale down to zero (Coldstart)
 - API analytics
+- api rate limiting and security
 
 ## practice
 
