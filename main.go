@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 	"harshsinghvi/golang-postgres-kubernetes/controllers"
@@ -8,6 +9,7 @@ import (
 	"harshsinghvi/golang-postgres-kubernetes/database"
 	"harshsinghvi/golang-postgres-kubernetes/middlewares"
 	"harshsinghvi/golang-postgres-kubernetes/models/roles"
+	"harshsinghvi/golang-postgres-kubernetes/utils"
 	"log"
 	"net/http"
 )
@@ -30,6 +32,7 @@ func init() {
 	}
 }
 func main() {
+	PORT := utils.GetEnv("PORT", "8080")
 
 	database.Connect()
 	database.CreateTables()
@@ -71,10 +74,6 @@ func main() {
 			v2.GET("/user/bill", middlewares.AIO(roles.Roles{roles.Any}, middlewares.Config{"billing-disable": true}), controllers.GetBills)
 			v2.DELETE("/user/token/:token-id", middlewares.AIO(roles.Roles{roles.Write}), controllers.DeleteToken)
 
-			// TODO Soft delete
-			// Delete Token
-			// delete user
-
 			// Business Logic
 			v2.GET("/todo/", middlewares.AIO(roles.Roles{roles.Admin, roles.Read}), controllers.GetAllTodos)
 			v2.GET("/todo/:id", middlewares.AIO(roles.Roles{roles.Admin, roles.Read, roles.ReadOne}), controllers.GetSingleTodo)
@@ -86,5 +85,6 @@ func main() {
 
 	router.GET("/health", healthHandler)
 	router.GET("/readiness", readinessHandler)
-	router.Run(":8080")
+
+	router.Run(fmt.Sprintf(":%s", PORT))
 }

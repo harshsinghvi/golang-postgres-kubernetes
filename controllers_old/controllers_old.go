@@ -14,7 +14,6 @@ var TODOS = []models.Todo{
 
 func GetTodos(c *gin.Context) {
 	id := c.Query("id")
-	// completed := c.Query("completed") == "true" // TODO: implement this filter
 
 	if id == "" {
 		c.IndentedJSON(http.StatusOK, TODOS)

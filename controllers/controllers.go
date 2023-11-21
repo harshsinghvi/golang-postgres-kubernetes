@@ -22,12 +22,18 @@ func GetAllTodos(c *gin.Context) {
 	var todos []models.Todo
 	var searchString = c.Query("search")
 	var pageString = c.Query("page")
+	var completedString = c.Query("completed")
 	pag.ParseString(pageString)
 
 	querry := database.Connection.Model(&todos).Order("created_at DESC").Where("deleted = ?", false).Where("user_id = ?", userId)
 
 	if searchString != "" {
 		querry = querry.Where(fmt.Sprintf("text like '%%%s%%'", searchString))
+	}
+
+	if completedString != "" {
+		var completed = completedString == "true" || completedString == "True"
+		querry = querry.Where("completed = ?", completed)
 	}
 
 	if pag.TotalRecords, err = querry.Count(); err != nil {

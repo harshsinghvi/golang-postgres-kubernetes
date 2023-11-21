@@ -16,7 +16,7 @@ type AccessToken struct {
 
 type AccessLog struct {
 	ID             string    `json:"id"`
-	TokenID        string    `json:"token_id"` // TODO: Change this to TokenID
+	TokenID        string    `json:"token_id"`
 	Path           string    `json:"path"`
 	ClientIP       string    `json:"client_ip"`
 	Method         string    `json:"method"`

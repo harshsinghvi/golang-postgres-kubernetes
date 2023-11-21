@@ -86,7 +86,6 @@ func createTablesAndIndexes(tableName string, model interface{}, indexFields str
 func CreateTables() {
 	createTablesAndIndexes("todos", &models.Todo{}, "completed, created_at, deleted")
 	createTablesAndIndexes("access_tokens", &models.AccessToken{}, "created_at, token, expiry, user_id, deleted")
-	// TODO: fails
 	createTablesAndIndexes("access_logs", &models.AccessLog{}, "token_id, path, method, response_time, status_code, server_hostname, created_at, bill_id, billed, deleted")
 	createTablesAndIndexes("users", &models.User{}, "email, created_at, deleted")
 	createTablesAndIndexes("bills", &models.Bill{}, "sattled, user_id, created_at, deleted")
